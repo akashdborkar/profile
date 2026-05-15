@@ -1,0 +1,17 @@
+{
+  "collectionName": "components_content_code_blocks",
+  "info": {
+    "displayName": "Code Block",
+    "icon": "code",
+    "description": "Syntax-highlighted code snippet with language label"
+  },
+  "options": {},
+  "attributes": {
+    "code": {
+      "type": "text"
+    },
+    "language": {
+      "type": "string"
+    }
+  }
+}

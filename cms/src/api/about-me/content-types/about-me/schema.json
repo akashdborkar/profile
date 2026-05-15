@@ -1,0 +1,37 @@
+{
+  "kind": "singleType",
+  "collectionName": "about_me",
+  "info": {
+    "singularName": "about-me",
+    "pluralName": "about-mes",
+    "displayName": "AboutMe",
+    "description": "Lead consultant personal bio, narrative, resume, and social links"
+  },
+  "options": {
+    "draftAndPublish": true
+  },
+  "pluginOptions": {},
+  "attributes": {
+    "elevatorPitch": {
+      "type": "text",
+      "required": true
+    },
+    "professionalNarrative": {
+      "type": "blocks",
+      "required": true
+    },
+    "resumeFile": {
+      "type": "media",
+      "multiple": false,
+      "required": false,
+      "allowedTypes": [
+        "files"
+      ]
+    },
+    "socialLinks": {
+      "type": "component",
+      "component": "shared.social-link",
+      "repeatable": true
+    }
+  }
+}

@@ -1,0 +1,47 @@
+{
+  "kind": "collectionType",
+  "collectionName": "projects",
+  "info": {
+    "singularName": "project",
+    "pluralName": "projects",
+    "displayName": "Project",
+    "description": "Case studies and project write-ups"
+  },
+  "options": {
+    "draftAndPublish": true
+  },
+  "pluginOptions": {},
+  "attributes": {
+    "title": {
+      "type": "string",
+      "required": true
+    },
+    "slug": {
+      "type": "uid",
+      "targetField": "title",
+      "required": true
+    },
+    "leadershipRole": {
+      "type": "string",
+      "required": true
+    },
+    "challenge": {
+      "type": "blocks",
+      "required": true
+    },
+    "solution": {
+      "type": "blocks",
+      "required": true
+    },
+    "skills_matrices": {
+      "type": "relation",
+      "relation": "manyToMany",
+      "target": "api::skills-matrix.skills-matrix",
+      "inversedBy": "projects"
+    },
+    "isFeatured": {
+      "type": "boolean",
+      "default": false
+    }
+  }
+}

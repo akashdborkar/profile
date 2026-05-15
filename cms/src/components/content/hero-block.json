@@ -1,0 +1,20 @@
+{
+  "collectionName": "components_content_hero_blocks",
+  "info": {
+    "displayName": "Hero Block",
+    "icon": "landscape",
+    "description": "Full-width hero image with heading text"
+  },
+  "options": {},
+  "attributes": {
+    "image": {
+      "type": "media",
+      "multiple": false,
+      "required": false,
+      "allowedTypes": ["images"]
+    },
+    "headingText": {
+      "type": "string"
+    }
+  }
+}

@@ -1,0 +1,22 @@
+{
+  "kind": "singleType",
+  "collectionName": "featured_curation",
+  "info": {
+    "singularName": "featured-curation",
+    "pluralName": "featured-curations",
+    "displayName": "FeaturedCurations",
+    "description": "Manual overrides for the featured content section (max 5 items)"
+  },
+  "options": {
+    "draftAndPublish": true
+  },
+  "pluginsOptions": {},
+  "attributes": {
+    "manuallyCuratedList": {
+      "type": "component",
+      "repeatable": true,
+      "component": "shared.curated-item",
+      "max": 5
+    }
+  }
+}

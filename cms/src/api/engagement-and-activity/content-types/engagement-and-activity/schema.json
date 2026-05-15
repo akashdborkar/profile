@@ -1,0 +1,38 @@
+{
+  "kind": "collectionType",
+  "collectionName": "engagement_and_activities",
+  "info": {
+    "singularName": "engagement-and-activity",
+    "pluralName": "engagement-and-activities",
+    "displayName": "EngagementAndActivity",
+    "description": "Speaking events, community activities, and professional engagements"
+  },
+  "options": {
+    "draftAndPublish": true
+  },
+  "pluginOptions": {},
+  "attributes": {
+    "title": {
+      "type": "string",
+      "required": true
+    },
+    "description": {
+      "type": "blocks",
+      "required": true
+    },
+    "eventDate": {
+      "type": "date",
+      "required": true
+    },
+    "isFeatured": {
+      "type": "boolean",
+      "default": false
+    },
+    "gallery_items": {
+      "type": "relation",
+      "relation": "manyToMany",
+      "target": "api::gallery.gallery",
+      "inversedBy": "engagement_and_activities"
+    }
+  }
+}

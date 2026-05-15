@@ -1,0 +1,46 @@
+{
+  "kind": "collectionType",
+  "collectionName": "blogs",
+  "info": {
+    "singularName": "blog",
+    "pluralName": "blogs",
+    "displayName": "Blog",
+    "description": "Blog posts — internal (with Dynamic Zone content) or external redirects"
+  },
+  "options": {
+    "draftAndPublish": true
+  },
+  "pluginOptions": {},
+  "attributes": {
+    "title": {
+      "type": "string",
+      "required": true
+    },
+    "slug": {
+      "type": "uid",
+      "targetField": "title",
+      "required": true
+    },
+    "isExternal": {
+      "type": "boolean",
+      "default": false
+    },
+    "externalUrl": {
+      "type": "string",
+      "regex": "^https?://.+"
+    },
+    "isFeatured": {
+      "type": "boolean",
+      "default": false
+    },
+    "contentBlocks": {
+      "type": "dynamiczone",
+      "components": [
+        "content.hero-block",
+        "content.text-block",
+        "content.code-block",
+        "content.callout-box"
+      ]
+    }
+  }
+}

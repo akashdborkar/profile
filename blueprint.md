@@ -221,12 +221,22 @@ Provide all configuration files in full. Show the complete file content for:
 - `app/page.tsx` (temporary smoke test version)
 ```
 
+> **⚠️ Version Adaptations (implemented May 2026)**
+>
+> | Spec assumed | Actual (current) | Impact |
+> |---|---|---|
+> | Tailwind CSS v3 (`tailwind.config.ts` color extensions, `darkMode: 'class'`) | **Tailwind CSS v4.3** — required by shadcn v4.7; config moves to CSS-based `@theme inline {}` in `globals.css` | `tailwind.config.ts` kept for content paths only; dark mode via `@custom-variant dark` in CSS |
+> | `npx shadcn-ui@latest init` (deprecated package) | **`npx shadcn@latest init`** v4.7 — uses `oklch()` color format, `@import "shadcn/tailwind.css"`, `tw-animate-css` | `globals.css` structure updated; brand hex vars override shadcn's oklch token vars |
+> | `toast` shadcn component | **`sonner`** — `toast` removed from shadcn v4 registry | Install `sonner` instead; `<Toaster>` from `sonner` component |
+> | shadcn Default/Slate style | **base-nova/neutral** — only style available in v4.7 `-d` flag | Irrelevant to final design; brand color vars override the base palette entirely |
+> | Next.js 15 | **Next.js 16.2.6** — installed by `create-next-app@latest` | No breaking changes for App Router usage in these prompts |
+
 ---
 
 ### Prompt 2 — Strapi CMS: Bootstrap & Single Types
 
 ```text
-You are a senior backend engineer setting up a Strapi v4 Headless CMS instance for a consultant portfolio platform.
+You are a senior backend engineer setting up a Strapi v4 Headless CMS instance for a profile portfolio.
 
 TASK:
 Bootstrap a Strapi v4 instance and define all Single Type content schemas. This CMS will serve as the content engine consumed by a Next.js frontend via REST API.
@@ -290,6 +300,17 @@ Provide complete file contents for:
 - Step-by-step instructions for API token creation and public role permissions
 ```
 
+> **⚠️ Version Adaptations (implemented May 2026)**
+>
+> | Spec assumed | Actual (current) | Impact |
+> |---|---|---|
+> | Strapi v4 | **Strapi v5.46.0** — installed by `create-strapi-app@latest` | Schema JSON format identical; `pluginsOptions` key renamed to `pluginOptions` (linter-corrected); `factories.createCoreController/Service/Router` API unchanged |
+> | `npx create-strapi-app@latest cms --quickstart` auto-starts server | `--no-run` flag added | Prevents auto-launch; run `npm run develop` manually from `cms/` |
+> | `findOne` permission for single types | **Single types only have `find`** (no `findOne` route in v5) | Enable only `find` under Public Role for `AboutMe` and `FeaturedCuration` |
+> | `PUT /admin/users-permissions/roles/:id` API path | **`PUT /users-permissions/roles/:id`** (no `/admin` prefix, uses `jwtToken` cookie) | Use browser session or cookie-based auth for programmatic permission updates |
+> | `hsl(var(--xxx))` pattern in middlewares | No change needed — v5 CORS config format identical to v4 | `config/middlewares.ts` structure unchanged |
+> | Seed via script | **Seed via admin UI** at `/admin/content-manager` — enter content, upload PDF, add social links, click Publish | Verified: `GET /api/about-me?populate=*` returns full JSON with `elevatorPitch`, `professionalNarrative` (Blocks), `resumeFile`, and `socialLinks` |
+
 ---
 
 ### Prompt 3 — Strapi CMS: Collection Type Schemas
@@ -298,7 +319,7 @@ Provide complete file contents for:
 You are a senior backend engineer extending a Strapi v4 CMS instance. The CMS already has Single Types (AboutMe, FeaturedCurations) and shared components defined.
 
 TASK:
-Define all Collection Type schemas required by the consultant platform. Each schema must be production-ready with correct field types, validations, and relations.
+Define all Collection Type schemas required by the profile portfolio. Each schema must be production-ready with correct field types, validations, and relations.
 
 REQUIREMENTS:
 
@@ -387,7 +408,7 @@ Provide complete file contents for all 7 schema JSON files and all 4 component J
 ### Prompt 4 — TypeScript API Client & Data Layer
 
 ```text
-You are a senior TypeScript engineer building the data access layer for a Next.js 15 App Router application. The application consumes a Strapi v4 REST API.
+You are a senior TypeScript engineer building the data access layer for a Next.js 15 App Router application. The application consumes a Strapi v5 REST API.
 
 TASK:
 Build a fully typed Strapi API client, TypeScript interfaces for all content types, and fetch helper functions with Next.js cache tagging. No UI is involved in this step.

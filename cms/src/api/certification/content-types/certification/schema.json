@@ -1,0 +1,38 @@
+{
+  "kind": "collectionType",
+  "collectionName": "certifications",
+  "info": {
+    "singularName": "certification",
+    "pluralName": "certifications",
+    "displayName": "Certification",
+    "description": "Professional certifications with optional expiry date"
+  },
+  "options": {
+    "draftAndPublish": true
+  },
+  "pluginOptions": {},
+  "attributes": {
+    "title": {
+      "type": "string",
+      "required": true
+    },
+    "issuingBody": {
+      "type": "string",
+      "required": true
+    },
+    "badgeImage": {
+      "type": "media",
+      "multiple": false,
+      "required": true,
+      "allowedTypes": ["images"]
+    },
+    "verificationUrl": {
+      "type": "string",
+      "required": true,
+      "regex": "^https?://.+"
+    },
+    "expiryDate": {
+      "type": "date"
+    }
+  }
+}
