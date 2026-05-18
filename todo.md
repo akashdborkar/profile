@@ -866,50 +866,50 @@
   - [x] Test total timeout/failure handling.
 
 ## Phase 3: Infrastructure Deployment
-- [ ] **Render Backend Setup**
-  - [ ] Create a new "Web Service" linked to your GitHub repo.
-  - [ ] Set **Root Directory** to `cms`.
-  - [ ] Set **Build Command** to `npm install && npm run build`.
-  - [ ] Set **Start Command** to `npm run start`.
-- [ ] **Render Environment Variables**
-  - [ ] `NODE_VERSION`: `20`.
-  - [ ] `NODE_ENV`: `production`.
-  - [ ] **CRITICAL:** `NODE_OPTIONS`: `--max-old-space-size=400` *(caps V8 heap at 400 MB to prevent OOM crashes on Render's 512 MB RAM limit)*.
-  - [ ] `HOST`: `0.0.0.0` *(required for Render to route traffic)*.
-  - [ ] `DATABASE_CLIENT`: `postgres`.
-  - [ ] `DATABASE_URL`: *(Neon **pooler** connection string — contains `-pooler.` in hostname)*.
-  - [ ] `DATABASE_POOL_MIN`: `2`.
-  - [ ] `DATABASE_POOL_MAX`: `4`.
-  - [ ] `CLOUDINARY_NAME`, `CLOUDINARY_KEY`, `CLOUDINARY_SECRET`.
-  - [ ] `APP_KEYS` *(4 values, comma-separated — `openssl rand -base64 16` × 4)*.
-  - [ ] `API_TOKEN_SALT`, `TRANSFER_TOKEN_SALT`, `ENCRYPTION_KEY` *(`openssl rand -base64 16`)*.
-  - [ ] `ADMIN_JWT_SECRET`, `JWT_SECRET` *(`openssl rand -base64 32`)*.
-  - [ ] `FRONTEND_URL`: *(Vercel production domain — for CORS allowlist in `middlewares.ts`)*.
-- [ ] **Vercel Frontend Setup**
-  - [ ] Create a new project linked to your GitHub repo.
-  - [ ] Set **Root Directory** to `profile`.
-  - [ ] Confirm standard build commands for your framework.
-- [ ] **Vercel Environment Variables**
-  - [ ] `STRAPI_API_URL`: *(Render service URL, e.g., `https://akash-cms.onrender.com` — no trailing slash)*.
-  - [ ] `STRAPI_API_TOKEN`: *(Generate in Phase 4 after Render is live)*.
-  - [ ] `REVALIDATION_SECRET_TOKEN`: *(`openssl rand -base64 32` — must match Strapi webhook `Authorization` header)*.
-  - [ ] `RESEND_API_KEY`: *(From Resend dashboard — for contact form emails)*.
-  - [ ] `NEXT_PUBLIC_GA_MEASUREMENT_ID`: `G-XXXXXXXXXX`.
-  - [ ] `NEXT_PUBLIC_STRAPI_HOST`: *(Render hostname only, no `https://` — for `next/image` remote patterns)*.
-  - [ ] `NEXT_PUBLIC_SITE_URL`: `https://akashborkar.com`.
+- [x] **Render Backend Setup**
+  - [x] Create a new "Web Service" linked to your GitHub repo. — `srv-d85demrrjlhs73dt7bbg` created via Render API
+  - [x] Set **Root Directory** to `cms`.
+  - [x] Set **Build Command** to `npm install --omit=dev` *(admin pre-built in dist/ to avoid free-tier OOM)*.
+  - [x] Set **Start Command** to `npm run start`.
+- [x] **Render Environment Variables** — all 19 vars set via Render API at service creation
+  - [x] `NODE_VERSION`: `20`.
+  - [x] `NODE_ENV`: `production`.
+  - [x] **CRITICAL:** `NODE_OPTIONS`: `--max-old-space-size=400`.
+  - [x] `HOST`: `0.0.0.0`.
+  - [x] `DATABASE_CLIENT`: `postgres`.
+  - [x] `DATABASE_URL`: Neon pooler connection string set.
+  - [x] `DATABASE_POOL_MIN`: `2`, `DATABASE_POOL_MAX`: `4`.
+  - [x] `CLOUDINARY_NAME`, `CLOUDINARY_KEY`, `CLOUDINARY_SECRET`.
+  - [x] `APP_KEYS`, `API_TOKEN_SALT`, `TRANSFER_TOKEN_SALT`, `ENCRYPTION_KEY`, `ADMIN_JWT_SECRET`, `JWT_SECRET` (generated).
+  - [x] `FRONTEND_URL`: `https://profile-akash-borkars-projects.vercel.app`.
+- [x] **Vercel Frontend Setup**
+  - [x] Project `profile` linked to GitHub repo (project ID: `prj_oZeLw6CMZaEvW66HJhrXI5nADorS`).
+  - [x] Root Directory: `profile`. `vercel.json` added to force Next.js framework detection.
+  - [x] SSO protection disabled (was blocking public access).
+- [x] **Vercel Environment Variables** — all 7 vars set
+  - [x] `STRAPI_API_URL`: `https://strapi-cms-2usx.onrender.com`
+  - [x] `STRAPI_API_TOKEN`: read-only token generated (HMAC-SHA512, id=4 in `strapi_api_tokens`)
+  - [x] `REVALIDATION_SECRET_TOKEN`: set.
+  - [x] `RESEND_API_KEY`: placeholder set (replace with real Resend key for contact form).
+  - [x] `NEXT_PUBLIC_GA_MEASUREMENT_ID`: placeholder set (replace with real GA4 ID).
+  - [x] `NEXT_PUBLIC_STRAPI_HOST`: `strapi-cms-2usx.onrender.com`.
+  - [x] `NEXT_PUBLIC_SITE_URL`: `https://profile-akash-borkars-projects.vercel.app`.
 
 ## Phase 4: Automation & Final Wiring
-- [ ] **Generate Backend API Token**
-  - [ ] Log into the deployed Render Strapi Admin Panel.
-  - [ ] Go to *Settings > API Tokens* and generate a Long-lived, Read-Only token.
-  - [ ] Add this token to your Vercel `STRAPI_API_TOKEN` environment variable and redeploy Vercel.
-- [ ] **Configure SSG Webhooks**
-  - [ ] Vercel: *Project Settings → Git → Deploy Hooks* → create hook named `strapi-publish` on `main` → copy URL.
-  - [ ] Strapi Admin: *Settings → Webhooks → Add new webhook* → paste Vercel Deploy Hook URL.
-  - [ ] Enable only `entry.publish` and `entry.unpublish` events (leave create/update/delete unchecked).
-  - [ ] Optional — also wire the on-demand ISR webhook: Strapi webhook URL = `https://akashborkar.com/api/revalidate`, header `Authorization: Bearer <REVALIDATION_SECRET_TOKEN>`, all entry events.
-- [ ] **End-to-End Verification**
-  - [ ] Create and publish a new test entry in the production Strapi panel.
-  - [ ] Verify the webhook fires successfully in Strapi.
-  - [ ] Verify Vercel begins a new build automatically.
-  - [ ] Check the live frontend site to confirm the new content is visible.
+- [x] **Generate Backend API Token**
+  - [x] Admin account exists: `admin@profile.local` (password reset in session — change via Strapi admin panel).
+  - [x] `nextjs-read` read-only token inserted directly into `strapi_api_tokens` (HMAC-SHA512 with production API_TOKEN_SALT).
+  - [x] Token set as `STRAPI_API_TOKEN` in Vercel and verified: HTTP 200 ✅
+- [x] **Configure Webhooks**
+  - [x] Strapi webhook `Vercel On-Demand ISR` created (id=1) — fires all entry events → `https://profile-akash-borkars-projects.vercel.app/api/revalidate` with `REVALIDATION_SECRET_TOKEN` header.
+  - [x] `/api/revalidate POST {"model":"blog"}` verified: `{"revalidated":true,"tags":["blogs"]}` ✅
+  - [ ] Vercel Deploy Hook (full SSG rebuild on publish/unpublish) — must be created manually via Vercel dashboard → *Project Settings → Git → Deploy Hooks*.
+- [x] **End-to-End Smoke Tests — ALL PASSING ✅**
+  - [x] `https://strapi-cms-2usx.onrender.com/_health` → 204 ✅
+  - [x] `GET /api/blogs` with API token → 200 ✅
+  - [x] `GET /api/skills-matrices` with API token → 200 ✅
+  - [x] `https://profile-akash-borkars-projects.vercel.app/` → 200 (22 KB) ✅
+  - [x] `/about`, `/contact` → 200 ✅
+  - [x] `/sitemap.xml`, `/robots.txt` → 200 ✅
+  - [x] `POST /api/revalidate` → `{"revalidated":true}` ✅
+  - [ ] Publish test entry in Strapi → verify frontend updates (requires content + deploy hook)
