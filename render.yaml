@@ -9,6 +9,10 @@ services:
     envVars:
       - key: NODE_ENV
         value: production
+      # Caps V8 heap at 400 MB — prevents OOM crashes on Render's 512 MB RAM limit.
+      # Without this flag the Strapi admin webpack build is reliably killed mid-build.
+      - key: NODE_OPTIONS
+        value: "--max-old-space-size=400"
       - key: DATABASE_CLIENT
         value: postgres
       # Paste your Neon / Supabase connection string in the Render dashboard.
@@ -16,8 +20,10 @@ services:
       # Supabase free tier: https://supabase.com  (500 MB, pauses after 1 week inactive)
       - key: DATABASE_URL
         sync: false
-      - key: DATABASE_SSL
-        value: "true"
+      - key: DATABASE_POOL_MIN
+        value: "2"
+      - key: DATABASE_POOL_MAX
+        value: "4"
       - key: HOST
         value: "0.0.0.0"
       # Render injects PORT automatically; Strapi reads it via env('PORT', 1337)
@@ -33,6 +39,13 @@ services:
         generateValue: true
       - key: ENCRYPTION_KEY
         generateValue: true
+      # Cloudinary — media uploads (ephemeral Render FS requires external storage)
+      - key: CLOUDINARY_NAME
+        sync: false
+      - key: CLOUDINARY_KEY
+        sync: false
+      - key: CLOUDINARY_SECRET
+        sync: false
       # Set after deploying Vercel frontend (used for CORS + webhook allow-list)
       - key: FRONTEND_URL
         sync: false

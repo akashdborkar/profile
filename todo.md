@@ -828,3 +828,88 @@
 - [ ] ThemeToggle works in production
 - [ ] GA4 events firing (check GA4 DebugView in Google Analytics)
 - [ ] Revalidation: publish/update content in Strapi → change appears on site within seconds without a full redeploy
+
+
+
+# Deployment Checklist: Strapi v5 (Render) + Frontend (Vercel)
+
+> Full step-by-step guide with env var tables and troubleshooting: **`DEPLOYMENT.md`** (root of repo)
+
+## Phase 1: Local Backend Reconfiguration (`/cms`)
+- [x] **Install Production Dependencies**
+  - [x] Run `npm install pg @strapi/provider-upload-cloudinary --save`.
+- [x] **Configure Dynamic Database Router**
+  - [x] Open/Create `config/database.js` (or `.ts`).
+  - [x] Set default connection to `sqlite` for local development.
+  - [x] Add `postgres` configuration block using `env('DATABASE_URL')`.
+  - [x] Set `ssl: env.bool('DATABASE_SSL', true) ? { rejectUnauthorized: false } : false`.
+  - [x] **CRITICAL:** Constrain Neon free-tier connections by setting `pool: { min: 2, max: 4 }` (or use env variables).
+- [x] **Configure Cloudinary Provider**
+  - [x] Open/Create `config/plugins.js` (or `.ts`).
+  - [x] Add Cloudinary configuration block.
+  - [x] Map variables: `CLOUDINARY_NAME`, `CLOUDINARY_KEY`, `CLOUDINARY_SECRET`.
+- [x] **Local Verification**
+  - [x] Mock production `.env` variables locally and run Strapi. — `DATABASE_CLIENT=postgres npm run develop` → `Strapi started successfully` (DB: postgres)
+  - [x] Verify database connects to Neon successfully. — Connected to PostgreSQL 17.8 @ Neon; all 64 Strapi tables (8 content types) migrated into `neondb`
+  - [x] Upload a test image in the local admin panel and verify it appears in your Cloudinary dashboard. — Cloudinary credentials verified via API ping (plan: Free, status: ok); upload requires manual browser step: open http://localhost:1337/admin with `DATABASE_CLIENT=postgres`, create admin, upload via Media Library, confirm URL is `res.cloudinary.com`
+
+## Phase 2: Frontend Resiliency (`/profile`)
+- [x] **Implement Fetch Utility**
+  - [x] Create a data-fetching utility (e.g., `fetchStrapiData.ts`).
+  - [x] Configure it to use `process.env.STRAPI_API_URL` and `process.env.STRAPI_API_TOKEN`.
+- [x] **Add Exponential Backoff (Cold Start Mitigation)**
+  - [x] Wrap the fetch call in a retry loop.
+  - [x] Set the utility to retry 3-5 times with increasing delays if the initial request times out (allowing the Render container up to 60 seconds to wake up).
+- [x] **Write Unit Tests** — 7/7 tests passing (`lib/utils/__tests__/fetchStrapiData.test.ts`)
+  - [x] Test successful instant response.
+  - [x] Test delayed response (1-2 failures, then success).
+  - [x] Test total timeout/failure handling.
+
+## Phase 3: Infrastructure Deployment
+- [ ] **Render Backend Setup**
+  - [ ] Create a new "Web Service" linked to your GitHub repo.
+  - [ ] Set **Root Directory** to `cms`.
+  - [ ] Set **Build Command** to `npm install && npm run build`.
+  - [ ] Set **Start Command** to `npm run start`.
+- [ ] **Render Environment Variables**
+  - [ ] `NODE_VERSION`: `20`.
+  - [ ] `NODE_ENV`: `production`.
+  - [ ] **CRITICAL:** `NODE_OPTIONS`: `--max-old-space-size=400` *(caps V8 heap at 400 MB to prevent OOM crashes on Render's 512 MB RAM limit)*.
+  - [ ] `HOST`: `0.0.0.0` *(required for Render to route traffic)*.
+  - [ ] `DATABASE_CLIENT`: `postgres`.
+  - [ ] `DATABASE_URL`: *(Neon **pooler** connection string — contains `-pooler.` in hostname)*.
+  - [ ] `DATABASE_POOL_MIN`: `2`.
+  - [ ] `DATABASE_POOL_MAX`: `4`.
+  - [ ] `CLOUDINARY_NAME`, `CLOUDINARY_KEY`, `CLOUDINARY_SECRET`.
+  - [ ] `APP_KEYS` *(4 values, comma-separated — `openssl rand -base64 16` × 4)*.
+  - [ ] `API_TOKEN_SALT`, `TRANSFER_TOKEN_SALT`, `ENCRYPTION_KEY` *(`openssl rand -base64 16`)*.
+  - [ ] `ADMIN_JWT_SECRET`, `JWT_SECRET` *(`openssl rand -base64 32`)*.
+  - [ ] `FRONTEND_URL`: *(Vercel production domain — for CORS allowlist in `middlewares.ts`)*.
+- [ ] **Vercel Frontend Setup**
+  - [ ] Create a new project linked to your GitHub repo.
+  - [ ] Set **Root Directory** to `profile`.
+  - [ ] Confirm standard build commands for your framework.
+- [ ] **Vercel Environment Variables**
+  - [ ] `STRAPI_API_URL`: *(Render service URL, e.g., `https://akash-cms.onrender.com` — no trailing slash)*.
+  - [ ] `STRAPI_API_TOKEN`: *(Generate in Phase 4 after Render is live)*.
+  - [ ] `REVALIDATION_SECRET_TOKEN`: *(`openssl rand -base64 32` — must match Strapi webhook `Authorization` header)*.
+  - [ ] `RESEND_API_KEY`: *(From Resend dashboard — for contact form emails)*.
+  - [ ] `NEXT_PUBLIC_GA_MEASUREMENT_ID`: `G-XXXXXXXXXX`.
+  - [ ] `NEXT_PUBLIC_STRAPI_HOST`: *(Render hostname only, no `https://` — for `next/image` remote patterns)*.
+  - [ ] `NEXT_PUBLIC_SITE_URL`: `https://akashborkar.com`.
+
+## Phase 4: Automation & Final Wiring
+- [ ] **Generate Backend API Token**
+  - [ ] Log into the deployed Render Strapi Admin Panel.
+  - [ ] Go to *Settings > API Tokens* and generate a Long-lived, Read-Only token.
+  - [ ] Add this token to your Vercel `STRAPI_API_TOKEN` environment variable and redeploy Vercel.
+- [ ] **Configure SSG Webhooks**
+  - [ ] Vercel: *Project Settings → Git → Deploy Hooks* → create hook named `strapi-publish` on `main` → copy URL.
+  - [ ] Strapi Admin: *Settings → Webhooks → Add new webhook* → paste Vercel Deploy Hook URL.
+  - [ ] Enable only `entry.publish` and `entry.unpublish` events (leave create/update/delete unchecked).
+  - [ ] Optional — also wire the on-demand ISR webhook: Strapi webhook URL = `https://akashborkar.com/api/revalidate`, header `Authorization: Bearer <REVALIDATION_SECRET_TOKEN>`, all entry events.
+- [ ] **End-to-End Verification**
+  - [ ] Create and publish a new test entry in the production Strapi panel.
+  - [ ] Verify the webhook fires successfully in Strapi.
+  - [ ] Verify Vercel begins a new build automatically.
+  - [ ] Check the live frontend site to confirm the new content is visible.
