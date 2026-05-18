@@ -2,6 +2,8 @@
 
 A production-grade personal branding and thought-leadership platform built as a decoupled JAMstack. The Next.js frontend is fully statically generated and consumes structured content from a Strapi v5 headless CMS, with on-demand cache revalidation so the site updates instantly when content is published — no redeploy required.
 
+**🌐 Live:** https://akashdborkar.vercel.app
+
 ---
 
 ## Table of Contents
@@ -30,7 +32,7 @@ A production-grade personal branding and thought-leadership platform built as a 
 Browser
   │
   ▼
-Vercel CDN  ──── serves pre-rendered HTML (SSG)
+Vercel CDN (akashdborkar.vercel.app) ──── serves pre-rendered HTML (SSG)
   │
   ▼
 Next.js 16 (App Router)
@@ -39,7 +41,7 @@ Next.js 16 (App Router)
   │  └── API route:   /api/revalidate  (webhook receiver)
   │
   ▼
-Strapi v5 (Railway / Render)
+Strapi v5 (strapi-cms-2usx.onrender.com — Render Free)
   │  └── On publish → fires webhook → POST /api/revalidate
   │                                      └── revalidateTag() clears CDN cache
   ▼
@@ -61,7 +63,8 @@ PostgreSQL (production) / SQLite (development)
 | **Analytics** | GA4 via `@next/third-parties` | — |
 | **Testing** | Vitest + React Testing Library | 3.2.4 |
 | **Deployment** | Vercel (frontend) | — |
-| **CMS hosting** | Railway / Render | — |
+| **CMS hosting** | Render Free + Neon PostgreSQL | — |
+| **Media storage** | Cloudinary | — |
 
 ---
 
@@ -292,7 +295,7 @@ All commands run from the `profile/` directory.
 cd profile && npm test
 ```
 
-**38 tests across 8 suites:**
+**45 tests across 9 suites:**
 
 | Suite | Tests | Type |
 |---|---|---|
@@ -300,6 +303,7 @@ cd profile && npm test
 | `groupSkillsByCategory` | 5 | Unit |
 | `richTextHelpers` | 5 | Unit |
 | `buildFeaturedList` | 5 | Unit |
+| `fetchStrapiData` | 7 | Unit (retry + backoff) |
 | `sendContactEmail` | 6 | Unit (Server Action) |
 | `/api/revalidate` route | 6 | Integration |
 | `SkillBadge` component | 3 | Component (RTL + jsdom) |
@@ -309,21 +313,16 @@ cd profile && npm test
 
 ## Deployment
 
-### Frontend → Vercel
+### Live Deployment
 
-1. Connect the GitHub repo to Vercel
-2. Set **Root Directory** to `profile`
-3. Add all environment variables (production values) in Vercel project settings
-4. Set `NEXT_PUBLIC_SITE_URL` to your production domain
-5. Deploy
+| Service | URL | Platform |
+|---|---|---|
+| **Frontend** | https://akashdborkar.vercel.app | Vercel |
+| **CMS** | https://strapi-cms-2usx.onrender.com | Render Free |
 
-### CMS → Railway / Render
+See `DEPLOYMENT.md` for the full step-by-step guide including env vars, webhook wiring, and troubleshooting.
 
-1. Deploy the `cms/` directory as a Node.js service
-2. Set `DATABASE_URL` to a PostgreSQL connection string
-3. Set `FRONTEND_URL` to your Vercel production domain (used by CORS)
-4. Regenerate `STRAPI_API_TOKEN` in the production admin and update Vercel env vars
-5. Update the Strapi webhook URL to `https://yourdomain.com/api/revalidate`
+**Note on Render free tier:** The Strapi admin Vite bundle OOMs on 512 MB RAM. `cms/dist/` is pre-built locally and committed — Render's build command is `npm install` only (no webpack/Vite step).
 
 ---
 

@@ -1668,3 +1668,84 @@ Provide complete file contents for:
 | 14 | GA4 setup, custom event tracking | Events fire on click |
 | 15 | Error boundaries, fallbacks, security audit | CMS-down resilience, secret audit |
 | 16 | Full test suite, sitemap, robots, OG meta, Lighthouse | All tests pass, build clean, scores ≥ 95 |
+
+
+
+Deployment Blueprint & Iterative Breakdown
+
+Phase 1: Backend Code Reconfiguration (Local)
+Step 1.1: Install production PostgreSQL and Cloudinary dependencies inside the /cms folder. 
+Step 1.2: Implement a dynamic database router in config/database.js to switch between SQLite (local) and Neon Postgres (production) based on environment variables. Critically, cap the connection pool at 4 to prevent Neon free-tier crashes.
+Step 1.3: Configure the Cloudinary provider in config/plugins.js to ensure the Render instance remains stateless.  
+
+
+Phase 2: Frontend Resiliency (Local)
+Step 2.1: Because Render free instances spin down after 15 minutes of inactivity , the frontend build script might hit a 30-60 second "cold start" delay when fetching data during a Vercel build. Implement a fetch utility with exponential backoff and retry logic to prevent build timeouts.  
+
+Phase 3: CI/CD & Deployment Strategy
+Step 3.1: Document and set the exact build commands and strict environment variables for Render (including NODE_OPTIONS=--max-old-space-size=400 to prevent OOM errors).  
+Step 3.2: Configure the Vercel SSG deployment and generate a Deploy Hook.  
+Step 3.3: Wire the Vercel Deploy Hook to the Strapi webhook UI, triggering on entry.publish and entry.unpublish.  
+
+
+LLM Code-Generation Prompts
+Prompt 1: Backend Database Configuration
+You are an expert backend developer specializing in Strapi v5. We are working within a monorepo where the backend resides in the `/cms` directory. The backend will be deployed to Render's Free Web Service, and we are using Neon's serverless PostgreSQL for the production database. 
+
+Please perform the following tasks using Test-Driven Development (TDD) principles where applicable:
+
+1. Provide the exact `npm install` command to add the required PostgreSQL client package (`pg`) to the `/cms` directory.
+2. Generate the complete code for `/cms/config/database.js` (or `.ts`). The code must dynamically route the database connection based on the `DATABASE_CLIENT` environment variable:
+   - If `sqlite`, it should connect to a local SQLite file (used for local development).
+   - If `postgres`, it should connect to the production Neon database using `DATABASE_URL`.
+3. For the PostgreSQL configuration, you MUST set the connection pool limits using environment variables: `DATABASE_POOL_MIN` (default 2) and `DATABASE_POOL_MAX` (default 4). This strict maximum of 4 is required to prevent connection spikes from crashing the Neon free-tier limits. Include SSL configurations (`rejectUnauthorized: false`).
+4. Write a brief Node.js test script using a testing framework like Jest to verify that the configuration object correctly switches between SQLite and Postgres based on mocked environment variables.
+
+
+Prompt 2: Backend Media Storage Configuration
+You are an expert backend developer specializing in Strapi v5. We are working within a monorepo where the backend resides in the `/cms` directory. The backend will be deployed to Render's Free Web Service, which has an ephemeral file system. Therefore, all media uploads must be routed to Cloudinary to make the backend stateless.
+
+Please perform the following tasks using best practices:
+
+1. Provide the exact `npm install` command to add the official Strapi Cloudinary provider (`@strapi/provider-upload-cloudinary`) to the `/cms` directory.
+2. Generate the complete code for `/cms/config/plugins.js` (or `.ts`). This file must configure the upload provider to use Cloudinary.
+3. Map the Cloudinary configuration dynamically using the following environment variables:
+   - `CLOUDINARY_NAME`
+   - `CLOUDINARY_KEY`
+   - `CLOUDINARY_SECRET`
+4. Provide a brief explanation of how to verify this integration locally by mocking these environment variables in a local `.env` file before pushing to production. Ensure the code seamlessly integrates with standard Strapi v5 plugin architecture.
+
+Prompt 3: Frontend Resiliency & Fetch Utility
+You are an expert frontend developer working on a decoupled Jamstack application. We are working within a monorepo where the frontend application resides in the `/profile` directory. The frontend will be deployed to Vercel and relies on Static Site Generation (SSG). It fetches data from a headless Strapi v5 API hosted on Render's Free tier.
+
+Because Render's free tier spins down the server after 15 minutes of inactivity, API network requests made during the Vercel build step may experience a "cold start" timeout (up to 60 seconds).
+
+Please perform the following tasks:
+
+1. Write a resilient data-fetching utility function (e.g., `fetchStrapiData.ts` or `.js`) intended to be used during the Vercel SSG build step.
+2. This function must implement explicit pre-flight network request loops with an exponential backoff retry mechanism. If the initial request fails or times out, it should retry multiple times with increasing delays to give the Render container enough time to wake up completely.
+3. The utility should accept an endpoint path and utilize the `STRAPI_API_URL` and `STRAPI_API_TOKEN` environment variables for the request.
+4. Write a comprehensive suite of unit tests for this utility using Jest or Vitest. The tests must simulate:
+   - A successful immediate response.
+   - A delayed response (simulating server wake-up) where the first two requests fail but the third succeeds.
+   - A complete failure where all retries are exhausted.
+
+
+Prompt 4: Deployment & Webhook Wiring Guide
+You are an expert DevOps engineer specializing in Jamstack architectures, specifically deploying monorepos containing a Strapi v5 backend (`/cms`) and a frontend (`/profile`). The target infrastructure is Render (Free Web Service) for the backend and Vercel for the frontend.
+
+Please generate a comprehensive, step-by-step markdown deployment guide and checklist for wiring this project together. The guide must include:
+
+1. **Render Configuration:**
+   - Root directory scoping (`/cms`).
+   - Build and start commands.
+   - A comprehensive table of all required environment variables (including database URIs, Cloudinary keys, and Strapi secure tokens).
+   - Crucially, include the environment variable `NODE_OPTIONS=--max-old-space-size=400` and explain that it instructs the V8 engine to aggressively clean memory to prevent Out-Of-Memory (OOM) crashes on Render's 512MB RAM limit.
+
+2. **Vercel Configuration:**
+   - Root directory scoping (`/profile`).
+   - Required environment variables (`STRAPI_API_URL`, `STRAPI_API_TOKEN`).
+
+3. **Webhook Automation (SSG Loop):**
+   - Step-by-step instructions on how to generate a Vercel Deploy Hook URL.
+   - Step-by-step instructions on where to paste this URL inside the deployed Strapi Admin panel (Settings > Webhooks) and how to configure it to trigger only on `entry.publish` and `entry.unpublish` events.

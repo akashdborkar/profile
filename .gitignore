@@ -5,8 +5,12 @@
 node_modules/
 .next/
 build/
+
 # cms/dist/ is intentionally tracked — pre-built Strapi admin for Render free-tier
 # (Render 512 MB RAM cannot run the Vite admin bundle build)
+# Exclude local dev uploads that Strapi writes to disk (production uses Cloudinary)
+cms/dist/build/uploads/*
+!cms/dist/build/uploads/.gitkeep
 profile/dist/
 
 # Environment
@@ -17,5 +21,8 @@ profile/dist/
 # OS
 .DS_Store
 Thumbs.db
+
+# Vercel CLI project link (auto-generated, not needed in repo)
+.vercel
 
 .vercel

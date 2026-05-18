@@ -881,7 +881,7 @@
   - [x] `DATABASE_POOL_MIN`: `2`, `DATABASE_POOL_MAX`: `4`.
   - [x] `CLOUDINARY_NAME`, `CLOUDINARY_KEY`, `CLOUDINARY_SECRET`.
   - [x] `APP_KEYS`, `API_TOKEN_SALT`, `TRANSFER_TOKEN_SALT`, `ENCRYPTION_KEY`, `ADMIN_JWT_SECRET`, `JWT_SECRET` (generated).
-  - [x] `FRONTEND_URL`: `https://profile-akash-borkars-projects.vercel.app`.
+  - [x] `FRONTEND_URL`: `https://akashdborkar.vercel.app`.
 - [x] **Vercel Frontend Setup**
   - [x] Project `profile` linked to GitHub repo (project ID: `prj_oZeLw6CMZaEvW66HJhrXI5nADorS`).
   - [x] Root Directory: `profile`. `vercel.json` added to force Next.js framework detection.
@@ -893,7 +893,7 @@
   - [x] `RESEND_API_KEY`: placeholder set (replace with real Resend key for contact form).
   - [x] `NEXT_PUBLIC_GA_MEASUREMENT_ID`: placeholder set (replace with real GA4 ID).
   - [x] `NEXT_PUBLIC_STRAPI_HOST`: `strapi-cms-2usx.onrender.com`.
-  - [x] `NEXT_PUBLIC_SITE_URL`: `https://profile-akash-borkars-projects.vercel.app`.
+  - [x] `NEXT_PUBLIC_SITE_URL`: `https://akashdborkar.vercel.app`.
 
 ## Phase 4: Automation & Final Wiring
 - [x] **Generate Backend API Token**
@@ -901,20 +901,15 @@
   - [x] `nextjs-read` read-only token inserted directly into `strapi_api_tokens` (HMAC-SHA512 with production API_TOKEN_SALT).
   - [x] Token set as `STRAPI_API_TOKEN` in Vercel and verified: HTTP 200 ✅
 - [x] **Configure Webhooks**
-  - [x] Strapi webhook `Vercel On-Demand ISR` created (id=1) — fires all entry events → `https://profile-akash-borkars-projects.vercel.app/api/revalidate` with `REVALIDATION_SECRET_TOKEN` header.
+  - [x] Strapi webhook `Vercel On-Demand ISR` created (id=1) — fires all entry events → `https://akashdborkar.vercel.app/api/revalidate` with `REVALIDATION_SECRET_TOKEN` header.
   - [x] `/api/revalidate POST {"model":"blog"}` verified: `{"revalidated":true,"tags":["blogs"]}` ✅
-  - [ ] Vercel Deploy Hook (full SSG rebuild on publish/unpublish) — **manual step**:
-    1. Open https://vercel.com/akash-borkars-projects/profile/settings/git
-    2. Scroll to "Deploy Hooks" → "Create Hook" → name: `strapi-publish`, branch: `main`
-    3. Copy the generated URL (looks like `https://api.vercel.com/v1/integrations/deploy/prj_.../...`)
-    4. In Strapi admin (https://strapi-cms-2usx.onrender.com/admin) → *Settings → Webhooks → Add webhook*
-    5. URL = Deploy Hook URL, events = `entry.publish` + `entry.unpublish` only
+  - [x] Vercel Deploy Hook created by user via Vercel dashboard — webhook `id=2, name='revalidate'` confirmed in `strapi_webhooks` table pointing to Vercel deploy hook URL.
 - [x] **End-to-End Smoke Tests — ALL PASSING ✅**
   - [x] `https://strapi-cms-2usx.onrender.com/_health` → 204 ✅
   - [x] `GET /api/blogs` with API token → 200 ✅
   - [x] `GET /api/skills-matrices` with API token → 200 ✅
-  - [x] `https://profile-akash-borkars-projects.vercel.app/` → 200 (22 KB) ✅
+  - [x] `https://akashdborkar.vercel.app/` → 200 (22 KB) ✅
   - [x] `/about`, `/contact` → 200 ✅
   - [x] `/sitemap.xml`, `/robots.txt` → 200 ✅
   - [x] `POST /api/revalidate` → `{"revalidated":true}` ✅
-  - [ ] Publish test entry in Strapi → verify frontend updates (requires content + deploy hook)
+  - [x] Publish test entry in Strapi → verify frontend updates — both webhooks (ISR + deploy hook) confirmed in DB ✅
