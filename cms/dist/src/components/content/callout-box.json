@@ -1,0 +1,19 @@
+{
+    "collectionName": "components_content_callout_boxes",
+    "info": {
+        "displayName": "Callout Box",
+        "icon": "information",
+        "description": "Highlighted callout with variant styling (Info, Warning, Success)"
+    },
+    "options": {},
+    "attributes": {
+        "variant": {
+            "type": "enumeration",
+            "enum": ["Info", "Warning", "Success"],
+            "required": true
+        },
+        "content": {
+            "type": "text"
+        }
+    }
+}

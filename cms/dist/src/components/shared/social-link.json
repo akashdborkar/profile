@@ -1,0 +1,21 @@
+{
+    "collectionName": "components_shared_social_links",
+    "info": {
+        "displayName": "Social Link",
+        "icon": "link",
+        "description": "A social media profile link"
+    },
+    "options": {},
+    "attributes": {
+        "platformName": {
+            "type": "enumeration",
+            "enum": ["LinkedIn", "GitHub", "X", "StackOverflow"],
+            "required": true
+        },
+        "url": {
+            "type": "string",
+            "required": true,
+            "regex": "^https?://.+"
+        }
+    }
+}

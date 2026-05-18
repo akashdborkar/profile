@@ -1,0 +1,42 @@
+{
+    "kind": "collectionType",
+    "collectionName": "galleries",
+    "info": {
+        "singularName": "gallery",
+        "pluralName": "galleries",
+        "displayName": "Gallery",
+        "description": "Photo gallery items categorised by tag"
+    },
+    "options": {
+        "draftAndPublish": true
+    },
+    "pluginOptions": {},
+    "attributes": {
+        "title": {
+            "type": "string",
+            "required": true
+        },
+        "imageAsset": {
+            "type": "media",
+            "multiple": false,
+            "required": true,
+            "allowedTypes": ["images"]
+        },
+        "categoryTag": {
+            "type": "enumeration",
+            "enum": [
+                "SpeakingEvents",
+                "Offices",
+                "TeamWork",
+                "Certifications"
+            ],
+            "required": true
+        },
+        "engagement_and_activities": {
+            "type": "relation",
+            "relation": "manyToMany",
+            "target": "api::engagement-and-activity.engagement-and-activity",
+            "mappedBy": "gallery_items"
+        }
+    }
+}

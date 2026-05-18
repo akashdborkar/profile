@@ -3,7 +3,8 @@ services:
     name: strapi-cms
     runtime: node
     rootDir: cms
-    buildCommand: npm ci && npm run build
+    # dist/ is pre-built locally and committed — Vite admin bundle OOMs on 512 MB free tier
+    buildCommand: npm install --omit=dev
     startCommand: npm run start
     plan: free
     envVars:

@@ -1,0 +1,48 @@
+{
+    "kind": "collectionType",
+    "collectionName": "skills_matrices",
+    "info": {
+        "singularName": "skills-matrix",
+        "pluralName": "skills-matrices",
+        "displayName": "SkillsMatrix",
+        "description": "Individual skills with category and experience level"
+    },
+    "options": {
+        "draftAndPublish": true
+    },
+    "pluginOptions": {},
+    "attributes": {
+        "skillName": {
+            "type": "string",
+            "required": true,
+            "unique": true
+        },
+        "category": {
+            "type": "enumeration",
+            "enum": [
+                "Frontend",
+                "Backend",
+                "Cloud",
+                "DevOps",
+                "Database",
+                "CMS",
+                "AI",
+                "Architecture",
+                "Management"
+            ],
+            "required": true
+        },
+        "yearsOfExperience": {
+            "type": "integer",
+            "required": true,
+            "min": 0,
+            "max": 50
+        },
+        "projects": {
+            "type": "relation",
+            "relation": "manyToMany",
+            "target": "api::project.project",
+            "mappedBy": "skills_matrices"
+        }
+    }
+}

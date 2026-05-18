@@ -4,8 +4,10 @@
 # Node
 node_modules/
 .next/
-dist/
 build/
+# cms/dist/ is intentionally tracked — pre-built Strapi admin for Render free-tier
+# (Render 512 MB RAM cannot run the Vite admin bundle build)
+profile/dist/
 
 # Environment
 .env
@@ -15,3 +17,5 @@ build/
 # OS
 .DS_Store
 Thumbs.db
+
+.vercel
