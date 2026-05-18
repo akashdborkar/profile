@@ -1,9 +1,3 @@
-databases:
-  - name: strapi-db
-    databaseName: strapi
-    user: strapi
-    plan: basic-256mb
-
 services:
   - type: web
     name: strapi-cms
@@ -11,18 +5,22 @@ services:
     rootDir: cms
     buildCommand: npm ci && npm run build
     startCommand: npm run start
-    plan: starter
+    plan: free
     envVars:
       - key: NODE_ENV
         value: production
       - key: DATABASE_CLIENT
         value: postgres
+      # Paste your Neon / Supabase connection string in the Render dashboard.
+      # Neon free tier: https://neon.tech  (0.5 GB, always-on)
+      # Supabase free tier: https://supabase.com  (500 MB, pauses after 1 week inactive)
       - key: DATABASE_URL
-        fromDatabase:
-          name: strapi-db
-          property: connectionString
+        sync: false
+      - key: DATABASE_SSL
+        value: "true"
       - key: HOST
         value: "0.0.0.0"
+      # Render injects PORT automatically; Strapi reads it via env('PORT', 1337)
       - key: APP_KEYS
         generateValue: true
       - key: API_TOKEN_SALT
@@ -35,6 +33,6 @@ services:
         generateValue: true
       - key: ENCRYPTION_KEY
         generateValue: true
-      # Set this manually in Render dashboard after deploying Vercel frontend
+      # Set after deploying Vercel frontend (used for CORS + webhook allow-list)
       - key: FRONTEND_URL
         sync: false
