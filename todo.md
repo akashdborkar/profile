@@ -903,7 +903,12 @@
 - [x] **Configure Webhooks**
   - [x] Strapi webhook `Vercel On-Demand ISR` created (id=1) — fires all entry events → `https://profile-akash-borkars-projects.vercel.app/api/revalidate` with `REVALIDATION_SECRET_TOKEN` header.
   - [x] `/api/revalidate POST {"model":"blog"}` verified: `{"revalidated":true,"tags":["blogs"]}` ✅
-  - [ ] Vercel Deploy Hook (full SSG rebuild on publish/unpublish) — must be created manually via Vercel dashboard → *Project Settings → Git → Deploy Hooks*.
+  - [ ] Vercel Deploy Hook (full SSG rebuild on publish/unpublish) — **manual step**:
+    1. Open https://vercel.com/akash-borkars-projects/profile/settings/git
+    2. Scroll to "Deploy Hooks" → "Create Hook" → name: `strapi-publish`, branch: `main`
+    3. Copy the generated URL (looks like `https://api.vercel.com/v1/integrations/deploy/prj_.../...`)
+    4. In Strapi admin (https://strapi-cms-2usx.onrender.com/admin) → *Settings → Webhooks → Add webhook*
+    5. URL = Deploy Hook URL, events = `entry.publish` + `entry.unpublish` only
 - [x] **End-to-End Smoke Tests — ALL PASSING ✅**
   - [x] `https://strapi-cms-2usx.onrender.com/_health` → 204 ✅
   - [x] `GET /api/blogs` with API token → 200 ✅
