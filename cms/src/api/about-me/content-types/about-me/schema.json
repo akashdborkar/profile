@@ -32,6 +32,14 @@
       "type": "component",
       "component": "shared.social-link",
       "repeatable": true
+    },
+    "profileImage": {
+      "type": "media",
+      "multiple": false,
+      "required": false,
+      "allowedTypes": [
+        "images"
+      ]
     }
   }
 }

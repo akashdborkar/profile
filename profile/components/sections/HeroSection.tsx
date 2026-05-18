@@ -1,3 +1,4 @@
+import Image from 'next/image'
 import { Separator } from '@/components/ui/separator'
 import { buttonVariants } from '@/components/ui/button'
 import { SocialLinks } from '@/components/ui/SocialLinks'
@@ -24,6 +25,8 @@ export function HeroSection({ aboutMe }: HeroSectionProps) {
     ? `${env.strapiUrl}${aboutMe.resumeFile.url}`
     : null
 
+  const profileImageUrl = aboutMe.profileImage?.url ?? null
+
   return (
     <div className="relative min-h-screen flex flex-col justify-center overflow-hidden">
       {/* Decorative radial gradient orb */}
@@ -36,27 +39,49 @@ export function HeroSection({ aboutMe }: HeroSectionProps) {
       />
 
       <div className="relative max-w-6xl mx-auto px-4 md:px-8 lg:px-16 py-20 w-full">
-        {/* Pre-heading */}
-        <p className="text-sm uppercase tracking-widest text-muted-foreground mb-4 font-medium">
-          Lead Technical Consultant
-        </p>
+        <div className="grid grid-cols-1 md:grid-cols-2 items-center gap-12">
 
-        {/* Elevator pitch */}
-        <h3 className="text-3xl md:text-4xl font-bold leading-tight text-foreground mb-6 whitespace-pre-line">
-          {aboutMe.elevatorPitch}
-        </h3>
+          {/* Left — text content */}
+          <div>
+            {/* Pre-heading */}
+            <p className="text-sm uppercase tracking-widest text-muted-foreground mb-4 font-medium">
+              Lead Technical Consultant
+            </p>
 
-        <Separator className="my-8" />
+            {/* Elevator pitch */}
+            <h3 className="text-3xl md:text-4xl font-bold leading-tight text-foreground mb-6 whitespace-pre-line">
+              {aboutMe.elevatorPitch}
+            </h3>
 
-        {/* Social links — shared component */}
-        <SocialLinks links={aboutMe.socialLinks} className="mb-10" />
+            <Separator className="my-8" />
 
-        {/* CTAs */}
-        <div className="flex flex-wrap gap-4">
-          <a href="#featured" className={cn(buttonVariants({ variant: 'outline' }))}>
-            View My Work
-          </a>
-          {cvUrl && <ResumeDownloadLink href={cvUrl} label="Download CV" variant="ghost" />}
+            {/* Social links */}
+            <SocialLinks links={aboutMe.socialLinks} className="mb-10" />
+
+            {/* CTAs */}
+            <div className="flex flex-wrap gap-4">
+              <a href="#featured" className={cn(buttonVariants({ variant: 'outline' }))}>
+                View My Work
+              </a>
+              {cvUrl && <ResumeDownloadLink href={cvUrl} label="Download CV" variant="ghost" />}
+            </div>
+          </div>
+
+          {/* Right — profile image */}
+          {profileImageUrl && (
+            <div className="flex justify-center md:justify-end">
+              <div className="relative w-64 h-64 md:w-80 md:h-80 rounded-full overflow-hidden ring-4 ring-accent/30 shadow-2xl">
+                <Image
+                  src={profileImageUrl}
+                  alt={aboutMe.profileImage?.alternativeText ?? 'Akash Borkar'}
+                  fill
+                  className="object-cover"
+                  priority
+                  sizes="(max-width: 768px) 256px, 320px"
+                />
+              </div>
+            </div>
+          )}
         </div>
       </div>
     </div>

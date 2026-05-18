@@ -9,6 +9,8 @@ const nextConfig: NextConfig = {
       ...(process.env.NEXT_PUBLIC_STRAPI_HOST
         ? [{ protocol: 'https' as const, hostname: process.env.NEXT_PUBLIC_STRAPI_HOST, pathname: '/uploads/**' }]
         : []),
+      // Cloudinary media (used by Strapi cloud storage provider)
+      { protocol: 'https', hostname: 'res.cloudinary.com', pathname: '/**' },
     ],
   },
 };

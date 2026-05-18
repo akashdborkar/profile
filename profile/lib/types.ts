@@ -81,6 +81,7 @@ export interface AboutMe extends StrapiEntity {
   elevatorPitch: string
   professionalNarrative: StrapiBlock[]
   resumeFile: StrapiMedia | null
+  profileImage: StrapiMedia | null
   socialLinks: SocialLink[]
 }
 
