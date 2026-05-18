@@ -36,8 +36,10 @@
 
     // Do not include admin files in the server compilation
     "src/admin/",
-    // Do not include test files
+    // Do not include test files or test config
     "**/*.test.*",
+    "vitest.config.ts",
+    "config/__tests__/",
     // Do not include plugins in the server compilation
     "src/plugins/**"
   ]
