@@ -33,7 +33,20 @@ export function CaseStudyLayout({ project }: Props) {
             <span className="text-sm text-muted-foreground">{publishedDate}</span>
           )}
         </div>
-        <h1 className="text-4xl font-bold leading-tight">{project.title}</h1>
+        <h1 className="text-4xl font-bold leading-tight">
+          {project.projectUrl ? (
+            <a
+              href={project.projectUrl}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="hover:text-accent transition-colors"
+            >
+              {project.title}
+            </a>
+          ) : (
+            project.title
+          )}
+        </h1>
       </div>
 
       {/* Content grid */}

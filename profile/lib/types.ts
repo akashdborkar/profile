@@ -118,6 +118,7 @@ export interface Project extends StrapiEntity {
   solution: StrapiBlock[]
   skills_matrices: SkillsMatrix[]
   isFeatured: boolean
+  projectUrl?: string
 }
 
 // ---------------------------------------------------------------------------

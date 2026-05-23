@@ -42,6 +42,9 @@
         "isFeatured": {
             "type": "boolean",
             "default": false
+        },
+        "projectUrl": {
+            "type": "string"
         }
     }
 }
