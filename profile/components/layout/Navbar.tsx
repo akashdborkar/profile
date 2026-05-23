@@ -11,6 +11,7 @@ const NAV_ANCHORS = [
   { label: 'About',          href: '#about' },
   { label: 'Skills',         href: '#skills' },
   { label: 'Featured',       href: '#featured' },
+  { label: 'Blog',           href: '#blog' },
   { label: 'Certifications', href: '#certifications' },
   { label: 'Engagements',    href: '#engagements' },
 ] as const
@@ -18,6 +19,7 @@ const NAV_ANCHORS = [
 const GLOBAL_LINKS = [
   { label: 'Home',    href: '/' },
   { label: 'About',   href: '/about' },
+  { label: 'Blog',    href: '/blog' },
   { label: 'Contact', href: '/contact' },
 ] as const
 

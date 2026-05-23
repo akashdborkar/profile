@@ -1749,3 +1749,436 @@ Please generate a comprehensive, step-by-step markdown deployment guide and chec
 3. **Webhook Automation (SSG Loop):**
    - Step-by-step instructions on how to generate a Vercel Deploy Hook URL.
    - Step-by-step instructions on where to paste this URL inside the deployed Strapi Admin panel (Settings > Webhooks) and how to configure it to trigger only on `entry.publish` and `entry.unpublish` events.
+
+
+
+
+   
+   
+   
+   
+   
+LinkedIn Data Sync Extension Blueprint
+
+---
+
+## Architecture
+
+- **Data store:** Strapi's existing `certification` and `engagement-and-activity` collections (Neon PostgreSQL). No new tables.
+- **Sync endpoint:** A custom Strapi v5 route (`POST /api/sync-linkedin`) registered inside `cms/src/` using Strapi's policy/controller/route factory pattern.
+- **Media pipeline:** LinkedIn badge images upload to Strapi's media library via `POST /api/upload` (Strapi proxies to Cloudinary via the existing upload provider). Post media uploads directly to Cloudinary via SDK, then stored as JSON URLs in the engagement record.
+- **Cache invalidation:** The existing `/api/revalidate` route at `profile/app/api/revalidate/route.ts` handles `model: "certification"` → `certifications` tag and `model: "engagement-and-activity"` → `engagements` tag via `MODEL_TO_TAG_MAP`. No new tags or revalidation routes needed.
+- **Frontend UI:** `CertificationsSection`, `CertificationCard`, `EngagementsSection`, and `EngagementCard` already exist. Only `EngagementCard` requires extension for the new `postUrl` and `mediaUrls` fields.
+
+---
+
+## Schema Changes — Additive Only, Zero Breaking Changes
+
+### `EngagementAndActivity` — Fields to ADD
+
+File: `cms/src/api/engagement-and-activity/content-types/engagement-and-activity/schema.json`
+
+**Keep all existing fields unchanged:**
+- `title` (String, required) — sync engine uses first 100 chars of LinkedIn post text as title
+- `description` (Blocks, required) — sync engine creates a minimal Strapi Blocks paragraph structure from LinkedIn post plain text: `[{ type: "paragraph", children: [{ type: "text", text: "..." }] }]`
+- `eventDate` (Date, required) — sync engine uses the LinkedIn post's `createdAt` date
+- `isFeatured` (Boolean, default: false) — sync engine defaults to false; user manually promotes in Strapi admin
+- `gallery_items` (Relation, many-to-many) — untouched for LinkedIn-sourced entries
+
+**New additive fields:**
+```json
+"linkedinPostId": { "type": "string" },
+"postUrl": { "type": "string" },
+"mediaUrls": { "type": "json" },
+"mediaType": {
+  "type": "enumeration",
+  "enum": ["Image", "Video", "Carousel", "ExternalLink"]
+},
+"linkPreviewCard": { "type": "json" }
+```
+
+Note: No `isPublished` field. Strapi's `draftAndPublish: true` already provides publish/draft toggle via `publishedAt`. The sync engine publishes records by posting to `?status=published` in the Strapi v5 API.
+
+---
+
+### `Certification` — Fields to ADD
+
+File: `cms/src/api/certification/content-types/certification/schema.json`
+
+**Existing fields (unchanged):**
+- `title` (String, required)
+- `issuingBody` (String, required)
+- `badgeImage` (Media, required) — Strapi's Cloudinary upload provider handles this natively. The sync engine uploads badge images via `POST /api/upload` (multipart), receives a Strapi media ID, and passes that ID when creating the certification record.
+- `verificationUrl` (String, required)
+- `expiryDate` (Date, optional)
+
+**New additive field:**
+```json
+"linkedinCertId": { "type": "string" }
+```
+
+`linkedinCertId` is the unique ID from Apify's LinkedIn scraper output used for deduplication. Title + issuingBody remains the human-readable composite key; `linkedinCertId` guards against re-importing if Apify changes text formatting. Strapi manages primary keys automatically; `draftAndPublish: true` already handles visibility.
+
+---
+
+## Round 1: High-Level Functional Chunks
+
+1. **Schema Extension:** Add new fields to existing Strapi schemas (additive only).
+2. **Media Extraction Asset Pipeline:** Utility to download ephemeral LinkedIn media and upload to Cloudinary directly; for badge images, upload via Strapi's `/api/upload` endpoint.
+3. **Strapi REST API Client:** Thin client wrapping `fetch` calls to Strapi's REST API for upsert operations on certifications and engagements.
+4. **Core Synchronization Engine:** Intelligent merge/dedup logic consuming the REST client and media pipeline.
+5. **Strapi Custom Route:** Register `POST /api/sync-linkedin` inside the Strapi CMS with `X-Sync-Token` middleware.
+6. **Next.js Vercel Cron Proxy:** `/api/cron/sync-linkedin` route in `profile/` proxies to the Strapi sync endpoint.
+7. **Frontend UI Extension:** Extend `EngagementCard` to render `postUrl` and `mediaUrls`; no changes to `CertificationCard`.
+
+## Round 2: Granular Step Sequence
+
+Step 1: Extend Strapi schemas (additive fields) and rebuild CMS dist.
+Step 2: Media pipeline utility — Cloudinary SDK for post media, Strapi upload API for badge images.
+Step 3: Strapi REST API client — typed fetch wrappers for `engagement-and-activity` and `certification` upserts.
+Step 4: Core sync engine — merge/dedup logic with full Vitest test coverage.
+Step 5: Strapi custom route + `X-Sync-Token` middleware inside `cms/`.
+Step 6: Next.js Vercel Cron proxy route in `profile/app/api/cron/sync-linkedin/route.ts`.
+Step 7: `EngagementCard` UI extension for `postUrl` and `mediaUrls` fields.
+
+---
+
+## Developer LLM Prompts
+
+Each prompt is self-contained with full file paths, interfaces, and TDD requirements aligned to the actual project stack (Strapi v5 / Next.js 16 App Router / Vitest).
+
+---
+
+### Prompt 1: Strapi Schema Extension + Strapi REST API Client
+
+```
+Context: You are extending an existing Strapi v5 CMS (monorepo at /cms) that manages a personal portfolio. The project uses Neon PostgreSQL via Strapi's database abstraction, Cloudinary for media via Strapi's upload provider, and Next.js 16 on the frontend. All data fetching on the frontend uses Strapi's REST API.
+
+Two existing collection types need additive-only field additions. DO NOT remove or alter any existing field — only add new ones.
+
+Task 1 — Extend cms/src/api/engagement-and-activity/content-types/engagement-and-activity/schema.json:
+Add these fields to the existing `attributes` object:
+- linkedinPostId: string (no unique constraint at schema level; dedup is handled in sync logic)
+- postUrl: string
+- mediaUrls: json
+- mediaType: enumeration with values ["Image", "Video", "Carousel", "ExternalLink"]
+- linkPreviewCard: json
+Do NOT change title, description (blocks), eventDate, isFeatured, or gallery_items.
+Do NOT add isPublished — Strapi's draftAndPublish: true already handles visibility.
+
+Task 2 — Extend cms/src/api/certification/content-types/certification/schema.json:
+Add this field to the existing `attributes` object:
+- linkedinCertId: string
+Do NOT change title, issuingBody, badgeImage (media type), verificationUrl, or expiryDate.
+Do NOT add isPublished or badgeImageUrl — Strapi's draftAndPublish and existing media field handle these.
+
+Task 3 — Create a typed Strapi REST API client at sync/src/strapi-client.ts:
+This file will be used by the sync engine to write data into Strapi. It must:
+1. Use environment variables STRAPI_API_URL and STRAPI_SYNC_API_TOKEN (a full-access token, separate from the read-only frontend token).
+2. Export these typed async functions:
+   - findEngagementByLinkedinPostId(postId: string): Promise<StrapiEngagement | null>
+     Calls GET /api/engagement-and-activities?filters[linkedinPostId][$eq]={postId}&pagination[limit]=1
+   - createEngagement(data: CreateEngagementInput): Promise<StrapiEngagement>
+     Calls POST /api/engagement-and-activities with status=published query param
+   - updateEngagementMedia(documentId: string, mediaUrls: string[]): Promise<void>
+     Calls PUT /api/engagement-and-activities/{documentId} — updates only mediaUrls
+   - findCertificationByCompositeKey(title: string, issuingBody: string): Promise<StrapiCertification | null>
+     Calls GET with combined filters on title and issuingBody
+   - createCertification(data: CreateCertificationInput): Promise<StrapiCertification>
+     Calls POST /api/certifications with status=published
+   - uploadBadgeToStrapiMedia(imageUrl: string): Promise<number>
+     Downloads the image buffer from a remote URL, uploads it via multipart POST /api/upload,
+     and returns the Strapi media entry's numeric id for use in certification's badgeImage field.
+
+3. Define TypeScript interfaces for StrapiEngagement, StrapiCertification, CreateEngagementInput,
+   and CreateCertificationInput aligned with Strapi v5's flat response format (no `attributes` wrapper).
+
+Important Strapi v5 notes:
+- All write endpoints require Authorization: Bearer <STRAPI_SYNC_API_TOKEN>
+- POST to create a published record: POST /api/certifications?status=published
+- PUT to update: PUT /api/engagement-and-activities/{documentId} (documentId is the string ID, not numeric id)
+- Flat response: res.data.title (NOT res.data.attributes.title)
+
+Write a Vitest test suite sync/src/__tests__/strapi-client.test.ts that mocks global fetch and verifies
+correct URL construction, auth headers, and response parsing for each function.
+
+Deliver only clean, production-ready TypeScript. Files: sync/src/strapi-client.ts and sync/src/__tests__/strapi-client.test.ts.
+```
+
+---
+
+### Prompt 2: Media Extraction Asset Pipeline
+
+```
+Context: You are building the media management utility for a LinkedIn sync engine that feeds data into a Strapi v5 portfolio CMS. LinkedIn media URLs (post images, videos) are ephemeral and expire. Badge images for certifications must be uploaded via Strapi's /api/upload endpoint (which proxies to Cloudinary). Post media goes directly to Cloudinary via the SDK.
+
+Task:
+Create sync/src/media-processor.ts with two exported functions:
+
+1. syncPostMediaToCloudinary(mediaUrls: string[]): Promise<string[]>
+   - Initialize Cloudinary v2 SDK with env vars CLOUDINARY_NAME, CLOUDINARY_KEY, CLOUDINARY_SECRET.
+   - For each URL: fetch raw buffer via node-fetch with a 10-second AbortController timeout.
+   - Upload the buffer to Cloudinary using uploader.upload_stream wrapped in a Promise.
+   - On any per-asset error (timeout, network fail, Cloudinary rejection), log the error and exclude
+     that asset from the returned array — do NOT crash the pipeline.
+   - Return array of permanent Cloudinary secure_urls.
+
+2. uploadBadgeViaStrapi(badgeUrl: string): Promise<number>
+   - Fetch the raw image buffer from badgeUrl with a 10-second timeout.
+   - Build a FormData payload with the file buffer as a Blob.
+   - POST to ${STRAPI_API_URL}/api/upload with Authorization: Bearer ${STRAPI_SYNC_API_TOKEN}.
+   - Parse the JSON response (Strapi returns an array) and return response[0].id (numeric Strapi media ID).
+   - Throw a descriptive error if the upload fails — badge images are required for certifications.
+
+Write a Vitest test suite sync/src/__tests__/media-processor.test.ts mocking node-fetch and the Cloudinary SDK:
+- Successful post media download returns permanent Cloudinary URLs.
+- A timed-out asset is excluded from results without throwing.
+- Successful badge upload returns the correct numeric Strapi media ID.
+- A failed badge upload throws with a descriptive message.
+
+Deliver only clean, production-ready TypeScript. Files: sync/src/media-processor.ts and sync/src/__tests__/media-processor.test.ts.
+```
+
+
+
+---
+
+### Prompt 3: Intelligent Merge Core Engine
+
+```
+Context: You are building the core sync coordinator for a LinkedIn data pipeline. It writes data into a live Strapi v5 CMS (certifications and engagement-and-activities collections) via the Strapi REST API client from Prompt 1. It must never overwrite custom text edits made in the Strapi admin panel.
+
+Task:
+Implement sync/src/sync-engine.service.ts.
+
+Requirements:
+1. Export an async function:
+   syncLinkedInData(incomingData: LinkedInScraperPayload): Promise<{ activitiesSynced: number; certsSynced: number }>
+
+   LinkedInScraperPayload shape (from Apify LinkedIn scraper output):
+   {
+     certifications: Array<{
+       linkedinCertId: string
+       title: string
+       issuingBody: string
+       badgeUrl: string           // ephemeral LinkedIn CDN URL
+       verificationUrl: string
+       expiryDate?: string        // ISO date string or undefined
+     }>
+     featuredPosts: Array<{
+       linkedinPostId: string
+       postUrl: string
+       textContent: string
+       mediaUrls: string[]        // ephemeral LinkedIn CDN URLs
+       mediaType: 'Image' | 'Video' | 'Carousel' | 'ExternalLink'
+       linkPreviewCard?: { title: string; description: string; thumbnailUrl: string }
+       postedAt: string           // ISO date string
+     }>
+   }
+
+2. Certification merge rules:
+   - Look up by linkedinCertId first; fall back to title + issuingBody composite check.
+   - If NOT found: upload badge via uploadBadgeViaStrapi(), then createCertification() with
+     the returned Strapi media ID as badgeImage.
+   - If found: skip entirely. Never overwrite existing certification data.
+
+3. Featured post merge rules:
+   - Look up by linkedinPostId.
+   - If NOT found: upload media via syncPostMediaToCloudinary(), then createEngagement() with:
+       title: first 100 characters of textContent (trimmed)
+       description: Strapi Blocks format — [{ type: "paragraph", children: [{ type: "text", text: textContent }] }]
+       eventDate: postedAt (formatted as YYYY-MM-DD)
+       isFeatured: false
+       linkedinPostId, postUrl, mediaUrls (permanent Cloudinary URLs), mediaType, linkPreviewCard
+   - If found: upload incoming mediaUrls via syncPostMediaToCloudinary(), then call updateEngagementMedia()
+     with fresh Cloudinary URLs. Update only the mediaUrls field — title, description, eventDate, and isFeatured retain their current values.
+
+4. After all upserts complete, call the existing Next.js revalidation endpoint for both affected models:
+   POST ${NEXT_REVALIDATION_URL}/api/revalidate with:
+   - Authorization: Bearer ${REVALIDATION_SECRET_TOKEN}
+   - Body: { model: "certification" }  (maps to 'certifications' cache tag via existing MODEL_TO_TAG_MAP)
+   POST the same endpoint with body: { model: "engagement-and-activity" }  (maps to 'engagements' tag)
+   Do NOT invent new cache tags. The existing /api/revalidate route handles these model names already.
+
+5. Inject strapiClient and mediaProcessor as constructor/parameter dependencies for testability.
+
+Write a Vitest suite sync/src/__tests__/sync-engine.test.ts covering:
+- New certification: badge uploaded, createCertification called with correct Strapi media ID.
+- Existing certification (found by linkedinCertId): skipped, no create call made.
+- New post: media uploaded, createEngagement called with correct Blocks description format.
+- Existing post: only updateEngagementMedia called; createEngagement NOT called; textContent unchanged.
+- Revalidation endpoint called for both models after sync completes.
+
+Deliver only clean, production-ready TypeScript. Files: sync/src/sync-engine.service.ts and sync/src/__tests__/sync-engine.test.ts.
+```
+
+---
+
+### Prompt 4: Strapi Custom Route — Sync Endpoint
+
+```
+Context: You are adding a custom API route to an existing Strapi v5 CMS (located at /cms in the monorepo). This route exposes POST /api/sync-linkedin and is triggered by the Next.js Vercel cron proxy. Strapi v5 uses its own routing/controller/service architecture — this is NOT Express; do not use app.use() or express.Router(). The route is registered via Strapi's factory pattern.
+
+Task:
+Create three files inside cms/src/api/sync-linkedin/ following Strapi v5's custom API structure:
+
+1. cms/src/api/sync-linkedin/routes/sync-linkedin.ts
+   Register POST /api/sync-linkedin with a custom policy for token validation.
+
+2. cms/src/api/sync-linkedin/policies/verify-sync-token.ts
+   Strapi v5 policy that:
+   - Reads the X-Sync-Token header from ctx.request.header.
+   - Compares it against process.env.RENDER_SYNC_TOKEN.
+   - Returns HTTP 401 with { error: "Unauthorized handshake token" } if missing or incorrect.
+   - Calls next() if valid.
+
+3. cms/src/api/sync-linkedin/controllers/sync-linkedin.ts
+   Controller that:
+   - Invokes the syncLinkedInData() function from the sync engine (imported from sync/src/sync-engine.service.ts or a bundled copy).
+   - Passes ctx.request.body as the scraper payload.
+   - Returns HTTP 200 with { success: true, activitiesSynced: N, certsSynced: N } on success.
+   - Returns HTTP 500 with { error: message } on unhandled exceptions.
+
+Environment variable required on Render: RENDER_SYNC_TOKEN (generate with openssl rand -base64 32).
+
+Write a Vitest/Supertest suite cms/src/__tests__/sync-route.test.ts that mocks the Strapi test instance and verifies:
+- Requests missing X-Sync-Token header receive 401.
+- Requests with incorrect token receive 401.
+- Valid token triggers sync engine and returns 200 with correct payload shape.
+
+Deliver only clean, production-ready TypeScript in Strapi v5 convention. File structure:
+cms/src/api/sync-linkedin/routes/sync-linkedin.ts
+cms/src/api/sync-linkedin/policies/verify-sync-token.ts
+cms/src/api/sync-linkedin/controllers/sync-linkedin.ts
+cms/src/__tests__/sync-route.test.ts
+```
+
+---
+
+### Prompt 5: Next.js Vercel Cron Proxy Route
+
+```
+Context: You are adding a Vercel Cron Job to an existing Next.js 16 App Router portfolio (at /profile in the monorepo). The cron fires weekly and proxies to a Strapi v5 custom route at POST /api/sync-linkedin on the Render backend. Cache invalidation is handled inside the sync engine itself via the existing /api/revalidate route.
+
+Task:
+Create two files:
+
+1. profile/vercel.json
+   Add a cron configuration. IMPORTANT: check if vercel.json already exists before creating it.
+   If it exists, merge the crons array rather than overwriting.
+   Content:
+   {
+     "crons": [
+       { "path": "/api/cron/sync-linkedin", "schedule": "0 2 * * 0" }
+     ]
+   }
+   (Sunday 02:00 UTC — offset from midnight to reduce API rate-limit collisions with other services.)
+
+2. profile/app/api/cron/sync-linkedin/route.ts
+   Next.js App Router GET handler (Vercel cron uses GET):
+   - Read Authorization header. Verify it matches Bearer ${process.env.CRON_SECRET_TOKEN}.
+     Return NextResponse.json({ error: "Unauthorized" }, { status: 401 }) if invalid.
+   - POST to ${process.env.STRAPI_API_URL}/api/sync-linkedin with header X-Sync-Token: ${process.env.RENDER_SYNC_TOKEN}.
+   - If Render responds 2xx: return NextResponse.json({ triggered: true }, { status: 200 }).
+   - If Render responds non-2xx: return NextResponse.json({ triggered: false, status: renderResponse.status }, { status: 502 }).
+   - Wrap in try/catch: network failure returns 502.
+
+Environment variables required in Vercel: CRON_SECRET_TOKEN, RENDER_SYNC_TOKEN.
+STRAPI_API_URL is already configured in Vercel (points to https://strapi-cms-2usx.onrender.com).
+
+Write a Vitest test suite profile/app/api/cron/__tests__/sync-linkedin.test.ts mocking global fetch:
+- Missing/wrong Authorization header → 401.
+- Valid token + Render 200 response → returns { triggered: true }.
+- Valid token + Render 500 response → returns 502 with triggered: false.
+- Valid token + network error → returns 502.
+
+Deliver only clean, production-ready TypeScript. No new revalidation logic — it is handled inside the sync engine.
+```
+
+---
+
+### Prompt 6: Next.js Cache Revalidation
+
+```
+Context: You are working on a Next.js 16 App Router portfolio at /profile. The application uses
+Static Site Generation with on-demand cache invalidation via a revalidation route handler at
+profile/app/api/revalidate/route.ts. This route uses MODEL_TO_TAG_MAP to resolve incoming model
+names to cache tags and calls revalidateTag(tag, 'default') for each.
+
+The existing MODEL_TO_TAG_MAP already covers the models updated by the sync engine:
+  'certification'             → ['certifications']
+  'engagement-and-activity'   → ['engagements']
+
+Task:
+The revalidation route requires no modifications. The sync engine (Prompt 3) triggers it by calling:
+  POST /api/revalidate with Authorization: Bearer ${REVALIDATION_SECRET_TOKEN}
+  Body: { model: "certification" }
+  Body: { model: "engagement-and-activity" }
+
+For reference, the complete current handler is:
+  - Validates Bearer token against REVALIDATION_SECRET_TOKEN
+  - Looks up model in MODEL_TO_TAG_MAP
+  - Calls revalidateTag(tag, 'default') for each matched tag
+  - Returns { revalidated: true, tags, now: Date.now() }
+
+Write an integration test profile/app/api/revalidate/__tests__/route.test.ts verifying:
+- Invalid token returns 401.
+- model: "certification" triggers revalidateTag with tag "certifications".
+- model: "engagement-and-activity" triggers revalidateTag with tag "engagements".
+- Unknown model returns 400.
+
+Deliver only the test file. The route handler itself is already complete.
+```
+
+---
+
+### Prompt 7: Frontend UI Extension — EngagementCard Only
+
+```
+Context: You are extending an existing Next.js 16 portfolio frontend (/profile). The certifications
+and engagements data is already fetched in app/page.tsx via fetchCertifications() and fetchEngagements()
+from profile/lib/api.ts, and rendered by CertificationsSection and EngagementsSection components.
+CertificationCard already renders cert.badgeImage.url and requires no changes.
+
+The UI work is scoped to extending EngagementCard and the TypeScript EngagementAndActivity interface
+to surface the new LinkedIn-sourced fields.
+
+Task 1 — Update profile/lib/types.ts:
+Add these optional fields to the existing EngagementAndActivity interface:
+  linkedinPostId?: string
+  postUrl?: string
+  mediaUrls?: string[]
+  mediaType?: 'Image' | 'Video' | 'Carousel' | 'ExternalLink'
+  linkPreviewCard?: { title: string; description: string; thumbnailUrl: string }
+Only the EngagementAndActivity interface requires new optional fields; all other interfaces remain unchanged.
+
+Task 2 — Update profile/components/ui/EngagementCard.tsx:
+Read the current file before editing.
+Add these conditional rendering behaviors to the existing card layout:
+  - If engagement.postUrl is present, wrap the card title (h3) in an anchor:
+      <a href={engagement.postUrl} target="_blank" rel="noopener noreferrer">
+    Keep the existing hover:text-accent styling.
+  - If engagement.mediaUrls?.length > 0, render a media row below the description:
+    - For mediaType === 'Image' or 'Carousel': render the first URL as a responsive next/image
+      (use unoptimized={true} since these are Cloudinary URLs with full optimization already applied).
+    - For mediaType === 'Video': render a <video controls className="w-full rounded"> tag.
+    - For other types or missing mediaType: render nothing.
+  - If engagement.linkPreviewCard is present and no mediaUrls exist: render a small preview card
+    below description showing linkPreviewCard.title and linkPreviewCard.description in muted text.
+    Fallback gracefully to nothing if the object is malformed.
+  All new elements are conditional — existing manual engagements without these fields render identically to today.
+
+Task 3 — Write a Vitest + React Testing Library suite
+profile/components/ui/__tests__/EngagementCard.test.tsx:
+  - Card with postUrl: title anchor has correct href, target="_blank", rel="noopener noreferrer".
+  - Card without postUrl: title is not wrapped in an anchor.
+  - Card with mediaType=Image and mediaUrls: image element is rendered.
+  - Card with linkPreviewCard but no mediaUrls: preview card text is visible.
+  - Card with malformed linkPreviewCard (null fields): no runtime error thrown.
+  - Existing engagement without any new fields: renders identically, no regressions.
+
+Deliver only clean, production-ready TypeScript and Tailwind CSS code. Do not modify CertificationCard,
+CertificationsSection, EngagementsSection, or any other existing component.
+```
+
+

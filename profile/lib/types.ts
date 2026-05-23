@@ -193,6 +193,11 @@ export interface EngagementAndActivity extends StrapiEntity {
   eventDate: string
   isFeatured: boolean
   gallery_items: Gallery[]
+  linkedinPostId?: string
+  postUrl?: string
+  mediaUrls?: string[]
+  mediaType?: 'Image' | 'Video' | 'Carousel' | 'ExternalLink'
+  linkPreviewCard?: { title: string; description: string; thumbnailUrl: string }
 }
 
 // ---------------------------------------------------------------------------

@@ -33,6 +33,22 @@
       "relation": "manyToMany",
       "target": "api::gallery.gallery",
       "inversedBy": "engagement_and_activities"
+    },
+    "linkedinPostId": {
+      "type": "string"
+    },
+    "postUrl": {
+      "type": "string"
+    },
+    "mediaUrls": {
+      "type": "json"
+    },
+    "mediaType": {
+      "type": "enumeration",
+      "enum": ["Image", "Video", "Carousel", "ExternalLink"]
+    },
+    "linkPreviewCard": {
+      "type": "json"
     }
   }
 }

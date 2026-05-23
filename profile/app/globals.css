@@ -40,11 +40,11 @@
   :root {
     /* Brand design tokens — light theme */
     --background: #f8fafc;
-    --foreground: #0f172a;
+    --foreground: #000000;
     --accent: #3b82f6;
     --muted: #64748b;
     --accent-foreground: #ffffff;
-    --muted-foreground: #94a3b8;
+    --muted-foreground: #374151;
 
     /* shadcn component tokens — light */
     --card: oklch(1 0 0);

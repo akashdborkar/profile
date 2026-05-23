@@ -82,4 +82,24 @@ describe('POST /api/revalidate', () => {
     expect(mockRevalidateTag).toHaveBeenCalledWith('my-blog-post', 'default')
     expect(mockRevalidateTag).toHaveBeenCalledTimes(2)
   })
+
+  it('model "certification" triggers revalidateTag with tag "certifications"', async () => {
+    const req = makeRequest({ body: { model: 'certification' } })
+    const res = await POST(req)
+    expect(res.status).toBe(200)
+    const json = await res.json()
+    expect(json.revalidated).toBe(true)
+    expect(json.tags).toEqual(['certifications'])
+    expect(mockRevalidateTag).toHaveBeenCalledWith('certifications', 'default')
+  })
+
+  it('model "engagement-and-activity" triggers revalidateTag with tag "engagements"', async () => {
+    const req = makeRequest({ body: { model: 'engagement-and-activity' } })
+    const res = await POST(req)
+    expect(res.status).toBe(200)
+    const json = await res.json()
+    expect(json.revalidated).toBe(true)
+    expect(json.tags).toEqual(['engagements'])
+    expect(mockRevalidateTag).toHaveBeenCalledWith('engagements', 'default')
+  })
 })

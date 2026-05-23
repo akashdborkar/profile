@@ -5,9 +5,10 @@ import { HeroSection } from '@/components/sections/HeroSection'
 import { AboutPreviewSection } from '@/components/sections/AboutPreviewSection'
 import { SkillsMatrixSection } from '@/components/sections/SkillsMatrixSection'
 import { FeaturedSection } from '@/components/sections/FeaturedSection'
+import { BlogsSection } from '@/components/sections/BlogsSection'
 import { CertificationsSection } from '@/components/sections/CertificationsSection'
 import { EngagementsSection } from '@/components/sections/EngagementsSection'
-import { fetchAboutMe, fetchSkillsMatrix, fetchCertifications, fetchEngagements } from '@/lib/api'
+import { fetchAboutMe, fetchSkillsMatrix, fetchCertifications, fetchEngagements, fetchBlogs } from '@/lib/api'
 import { buildFeaturedList } from '@/lib/utils/buildFeaturedList'
 
 export default async function Home() {
@@ -15,12 +16,14 @@ export default async function Home() {
     aboutMeResult,
     skillsResult,
     featuredResult,
+    blogsResult,
     certificationsResult,
     engagementsResult,
   ] = await Promise.allSettled([
     fetchAboutMe(),
     fetchSkillsMatrix(),
     buildFeaturedList(),
+    fetchBlogs(),
     fetchCertifications(),
     fetchEngagements(false, true),
   ])
@@ -28,6 +31,7 @@ export default async function Home() {
   const aboutMe        = aboutMeResult.status        === 'fulfilled' ? aboutMeResult.value        : null
   const skills         = skillsResult.status         === 'fulfilled' ? skillsResult.value         : null
   const featuredItems  = featuredResult.status       === 'fulfilled' ? featuredResult.value       : null
+  const blogs          = blogsResult.status          === 'fulfilled' ? blogsResult.value          : null
   const certifications = certificationsResult.status === 'fulfilled' ? certificationsResult.value : null
   const engagements    = engagementsResult.status    === 'fulfilled' ? engagementsResult.value    : null
 
@@ -49,6 +53,10 @@ export default async function Home() {
 
         <SectionWrapper id="featured">
           <FeaturedSection items={featuredItems} />
+        </SectionWrapper>
+
+        <SectionWrapper id="blog">
+          <BlogsSection blogs={blogs} />
         </SectionWrapper>
 
         <SectionWrapper id="certifications">
