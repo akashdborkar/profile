@@ -50,3 +50,15 @@ services:
       # Set after deploying Vercel frontend (used for CORS + webhook allow-list)
       - key: FRONTEND_URL
         sync: false
+      # LinkedIn sync — shared secret validated by verify-sync-token policy (must match Vercel RENDER_SYNC_TOKEN)
+      - key: RENDER_SYNC_TOKEN
+        sync: false
+      # LinkedIn sync — Strapi API token with write access to certifications + engagement-and-activities
+      - key: STRAPI_SYNC_API_TOKEN
+        sync: false
+      # LinkedIn sync — Vercel frontend URL used to trigger ISR revalidation after sync
+      - key: NEXT_REVALIDATION_URL
+        sync: false
+      # LinkedIn sync — secret for the /api/revalidate webhook (must match Vercel REVALIDATION_SECRET_TOKEN)
+      - key: REVALIDATION_SECRET_TOKEN
+        sync: false
