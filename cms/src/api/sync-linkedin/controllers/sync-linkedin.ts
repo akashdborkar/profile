@@ -1,4 +1,14 @@
-import type { LinkedInScraperPayload, SyncResult } from '../../../../../sync/src/sync-engine.service'
+// Types are defined locally to avoid cross-package rootDir violations in Strapi's TS build.
+// The runtime sync engine (loaded via dynamic import) enforces the full shape.
+interface LinkedInScraperPayload {
+  certifications: unknown[]
+  featuredPosts: unknown[]
+}
+
+interface SyncResult {
+  activitiesSynced: number
+  certsSynced: number
+}
 
 type SyncFn = (data: LinkedInScraperPayload) => Promise<SyncResult>
 
@@ -11,9 +21,11 @@ export const syncLoader = {
 
   async get(): Promise<SyncFn> {
     if (!this.fn) {
-      // Dynamic import bridges the CJS (CMS) → ESM (sync/) boundary at runtime
-      const mod = await import('../../../../../sync/src/sync-engine.service.js')
-      this.fn = mod.syncLinkedInData
+      // new Function() prevents TypeScript from statically resolving the cross-package
+      // path during CMS compilation (rootDir constraint). At runtime Node.js loads it fine.
+      const load = new Function('m', 'return import(m)') as (m: string) => Promise<Record<string, unknown>>
+      const mod = await load('../../../../../sync/src/sync-engine.service.js')
+      this.fn = mod.syncLinkedInData as SyncFn
     }
     return this.fn
   },
