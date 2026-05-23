@@ -22,7 +22,7 @@ function mockFetch(status: number): void {
 // ---------------------------------------------------------------------------
 
 beforeEach(() => {
-  process.env.CRON_SECRET_TOKEN = 'test-cron-secret'
+  process.env.CRON_SECRET = 'test-cron-secret'
   process.env.STRAPI_API_URL = 'https://strapi-cms-2usx.onrender.com'
   process.env.RENDER_SYNC_TOKEN = 'render-sync-secret'
   vi.restoreAllMocks()
@@ -45,8 +45,8 @@ describe('Authentication', () => {
     expect(await res.json()).toEqual({ error: 'Unauthorized' })
   })
 
-  it('returns 401 when CRON_SECRET_TOKEN env var is not set', async () => {
-    delete process.env.CRON_SECRET_TOKEN
+  it('returns 401 when CRON_SECRET env var is not set', async () => {
+    delete process.env.CRON_SECRET
     const res = await GET(makeRequest({ Authorization: 'Bearer test-cron-secret' }))
     expect(res.status).toBe(401)
   })

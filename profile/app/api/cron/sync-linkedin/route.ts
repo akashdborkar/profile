@@ -2,7 +2,8 @@ import { NextRequest, NextResponse } from 'next/server'
 
 export async function GET(req: NextRequest) {
   const authHeader = req.headers.get('Authorization')
-  const expectedToken = process.env.CRON_SECRET_TOKEN
+  // Vercel automatically sets CRON_SECRET and injects it as the Bearer token on cron requests
+  const expectedToken = process.env.CRON_SECRET
 
   if (!expectedToken || authHeader !== `Bearer ${expectedToken}`) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
