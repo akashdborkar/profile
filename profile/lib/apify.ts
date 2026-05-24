@@ -35,25 +35,26 @@ export async function triggerLinkedInActorRun(opts: {
   profileUrl: string
   webhookUrl: string
 }): Promise<ApifyRunResult> {
-  const res = await fetch(`${APIFY_BASE}/acts/${encodeURIComponent(opts.actorId)}/runs`, {
-    method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
-      Authorization: `Bearer ${opts.apifyToken}`,
-    },
-    body: JSON.stringify({
-      // sovereigntaylor/linkedin-profile-scraper input schema
-      profileUrls: [opts.profileUrl],
-      scrapeType: 'profiles',
-      maxResults: 1,
-      webhooks: [
-        {
-          eventTypes: ['ACTOR.RUN.SUCCEEDED', 'ACTOR.RUN.FAILED'],
-          requestUrl: opts.webhookUrl,
-        },
-      ],
-    }),
-  })
+  // Webhooks must be a Base64-encoded JSON array in the query string — NOT in the actor input body
+  const webhooksB64 = Buffer.from(
+    JSON.stringify([{ eventTypes: ['ACTOR.RUN.SUCCEEDED', 'ACTOR.RUN.FAILED'], requestUrl: opts.webhookUrl }])
+  ).toString('base64')
+
+  const res = await fetch(
+    `${APIFY_BASE}/acts/${encodeURIComponent(opts.actorId)}/runs?webhooks=${encodeURIComponent(webhooksB64)}`,
+    {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        Authorization: `Bearer ${opts.apifyToken}`,
+      },
+      body: JSON.stringify({
+        profileUrls: [opts.profileUrl],
+        scrapeType: 'profiles',
+        maxResults: 1,
+      }),
+    }
+  )
 
   if (!res.ok) {
     const text = await res.text()

@@ -38,14 +38,25 @@ Vercel CDN (akashdborkar.vercel.app) ──── serves pre-rendered HTML (SSG)
 Next.js 16 (App Router)
   │  ├── Static pages: /, /about, /contact, /sitemap.xml, /robots.txt
   │  ├── SSG dynamic: /blog/[slug], /case-studies/[slug]
-  │  └── API route:   /api/revalidate  (webhook receiver)
+  │  ├── API routes:  /api/revalidate       (Strapi publish webhook)
+  │  │               /api/cron/sync-linkedin (Vercel Cron — triggers Apify)
+  │  │               /api/webhooks/apify-linkedin (Apify run callback)
   │
   ▼
 Strapi v5 (strapi-cms-2usx.onrender.com — Render Free)
-  │  └── On publish → fires webhook → POST /api/revalidate
-  │                                      └── revalidateTag() clears CDN cache
+  │  ├── On publish → fires webhook → POST /api/revalidate
+  │  │                                   └── revalidateTag() clears CDN cache
+  │  └── POST /api/sync-linkedin ← receives LinkedIn data from webhook handler
+  │
   ▼
-PostgreSQL (production) / SQLite (development)
+PostgreSQL via Neon (production) / SQLite (development)
+
+Weekly LinkedIn Sync (Vercel Cron — Sunday 2am UTC)
+  Vercel → /api/cron/sync-linkedin
+         → Apify actor (async scrape)
+         → /api/webhooks/apify-linkedin
+         → Strapi sync engine
+         → /api/revalidate (cache bust)
 ```
 
 ---
@@ -91,6 +102,7 @@ profile/                          ← Next.js frontend
 │   └── ui/                       # Reusable atoms (shadcn + custom)
 ├── lib/
 │   ├── api.ts                    # All Strapi fetch helpers with cache tags
+│   ├── apify.ts                  # Apify API client + LinkedIn output transformer
 │   ├── strapi.ts                 # Base fetch client
 │   ├── types.ts                  # TypeScript interfaces (Strapi v5 flat shape)
 │   ├── env.ts                    # Server-only env accessors
@@ -104,8 +116,11 @@ profile/                          ← Next.js frontend
 
 cms/                              ← Strapi v5 backend
 ├── src/
-│   ├── api/                      # 8 content type schemas
-│   └── components/               # Shared + Dynamic Zone components
+│   ├── api/
+│   │   ├── sync-linkedin/        # POST /api/sync-linkedin (policy + controller)
+│   │   └── ...                   # 8 content type schemas
+│   ├── components/               # Shared + Dynamic Zone components
+│   └── sync/                     # LinkedIn sync engine (strapi-client, media-processor, sync-engine.service)
 └── config/                       # CORS, middleware, server config
 ```
 
@@ -188,6 +203,54 @@ User submits form
   → Other error: generic retry message shown
 ```
 
+### 6. LinkedIn Data Sync (Weekly Cron)
+
+Certifications and featured activities are automatically synced from LinkedIn via an async webhook pipeline. The Vercel function must return within 10 seconds (Hobby plan limit), so the Apify scrape is fully decoupled.
+
+```
+Vercel Cron (Sunday 2am UTC)
+  └─ GET /api/cron/sync-linkedin
+       ├─ Validates CRON_SECRET (Vercel auto-injects on cron requests)
+       ├─ Triggers Apify actor run — async, returns in ~1s
+       │   Actor:   sovereigntaylor~linkedin-profile-scraper (pay-per-usage, $0.01/run)
+       │   Input:   { profileUrls: [LINKEDIN_PROFILE_URL], scrapeType: "profiles" }
+       │   Webhook: /api/webhooks/apify-linkedin?secret=APIFY_WEBHOOK_SECRET
+       └─ Returns { triggered: true, runId } — function exits
+
+Apify actor (1–3 min, free Apify compute)
+  └─ Scrapes public LinkedIn profile (certifications, experience, skills)
+  └─ On SUCCEEDED → POST /api/webhooks/apify-linkedin?secret=...
+
+Webhook handler (/api/webhooks/apify-linkedin)
+  └─ Validates APIFY_WEBHOOK_SECRET
+  └─ Fetches dataset from Apify API
+  └─ Transforms output → LinkedInScraperPayload { certifications[], featuredPosts[] }
+  └─ POST /api/sync-linkedin on Strapi (X-Sync-Token header)
+
+Strapi sync engine (cms/src/sync/sync-engine.service.ts)
+  └─ Deduplicates by linkedinCertId / linkedinPostId
+  └─ Creates new certifications + engagements (skips existing)
+  └─ Uploads badge images to Cloudinary
+  └─ POST /api/revalidate → revalidateTag() busts Next.js CDN cache
+```
+
+#### Known Limitation — LinkedIn Bot Detection
+
+The `sovereigntaylor~linkedin-profile-scraper` actor uses **CheerioCrawler** (plain HTTP, no browser). LinkedIn returns **HTTP 999** (bot detection challenge page) against non-browser requests without residential proxies. The Apify free plan does not cover residential proxies (~$12/GB extra).
+
+**Current behaviour:** The cron fires, Apify reports `status: SUCCEEDED`, but the dataset is empty — LinkedIn blocked the request before returning any data.
+
+**Workaround:** Add certifications manually via the Strapi admin panel at https://strapi-cms-2usx.onrender.com/admin.
+
+#### Future Possibilities
+
+| Approach | Cost | Notes |
+|---|---|---|
+| Residential proxies | ~$12/GB (Apify or BrightData) | Pass proxy group to existing actor — no code changes |
+| Browser-based actor (Playwright) | Free compute only | Bypasses basic bot detection without proxies |
+| LinkedIn Official API | Free | Requires LinkedIn Partner Program approval |
+| Manual CSV import | Free, one-time | Export from LinkedIn Settings → Data Privacy → Get a copy of your data → run a local import script against the Strapi API |
+
 ---
 
 ## CMS Content Model
@@ -254,22 +317,42 @@ Create `profile/.env.local` from the example file:
 ```bash
 # Strapi connection
 STRAPI_API_URL=http://localhost:1337
-STRAPI_API_TOKEN=         # Read-only API token from Strapi admin
+STRAPI_API_TOKEN=           # Read-only API token from Strapi admin
 
-# Webhook security (shared secret between Next.js and Strapi)
-REVALIDATION_SECRET_TOKEN= # Generate with: openssl rand -base64 32
+# Webhook security (shared secret — Next.js ↔ Strapi)
+REVALIDATION_SECRET_TOKEN=  # openssl rand -base64 32
 
 # Email (Resend)
-RESEND_API_KEY=            # From resend.com dashboard
+RESEND_API_KEY=             # From resend.com dashboard
 
 # Analytics (optional in dev)
 NEXT_PUBLIC_GA_MEASUREMENT_ID=G-XXXXXXXXXX
 
 # Deployment (used in sitemap + OG metadata)
 NEXT_PUBLIC_SITE_URL=https://yourdomain.com
+NEXT_PUBLIC_STRAPI_HOST=    # Strapi hostname for next/image domain allowlist
+
+# LinkedIn sync (Vercel only)
+APIFY_TOKEN=                # Apify API token — Settings → Integrations → API tokens
+APIFY_ACTOR_ID=sovereigntaylor~linkedin-profile-scraper
+LINKEDIN_PROFILE_URL=https://www.linkedin.com/in/yourprofile/
+APIFY_WEBHOOK_SECRET=       # openssl rand -base64 32 — shared with Apify webhook URL
+
+# LinkedIn sync handshake (Vercel → Strapi)
+RENDER_SYNC_TOKEN=          # openssl rand -base64 32 — must match Render env var
 ```
 
-> **Security note:** `STRAPI_API_TOKEN`, `REVALIDATION_SECRET_TOKEN`, and `RESEND_API_KEY` are server-only. `lib/env.ts` throws at module load if any of these are accessed client-side.
+**Strapi (Render) also needs these env vars for the sync engine:**
+
+| Var | Description |
+|---|---|
+| `RENDER_SYNC_TOKEN` | Same value as on Vercel — validates incoming sync requests |
+| `STRAPI_SYNC_API_TOKEN` | Full-access Strapi API token for sync engine self-calls |
+| `STRAPI_API_URL` | Self-referential base URL (`http://localhost:1337` in prod on Render) |
+| `NEXT_REVALIDATION_URL` | Frontend URL — e.g. `https://akashdborkar.vercel.app` |
+| `REVALIDATION_SECRET_TOKEN` | Same value as on Vercel |
+
+> **Security note:** `STRAPI_API_TOKEN`, `REVALIDATION_SECRET_TOKEN`, `RESEND_API_KEY`, `APIFY_TOKEN`, and `RENDER_SYNC_TOKEN` are server-only. `lib/env.ts` throws at module load if any of these are accessed client-side.
 
 ---
 
