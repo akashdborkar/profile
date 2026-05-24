@@ -92,7 +92,7 @@ interface RichTextRendererProps {
 
 export function RichTextRenderer({ blocks }: RichTextRendererProps) {
   return (
-    <div className="prose prose-invert max-w-none">
+    <div className="prose dark:prose-invert max-w-none">
       {blocks.map((block, idx) => renderBlock(block, idx))}
     </div>
   )
