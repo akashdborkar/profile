@@ -349,3 +349,370 @@ Open the Vercel dashboard metrics tracking container console to confirm that a n
 initialization begins automatically.
 Confirm that the newly published content updates render correctly across the live portfolio frontend URL
 without requiring manual intervention.
+
+
+
+
+
+
+
+
+Technical Specification: LinkedIn Data Sync Extension
+
+1. Executive Summary & Vision
+The goal of this extension is to automate the extraction and display of high-value professional milestones from the user's LinkedIn profile directly onto their personal portfolio website.
+
+To eliminate manual data duplication while preserving complete control over content presentation, the system targets only curated content: the "Featured Items" and "Licenses & Certifications" sections. The extension leverages a decoupled architecture where an automated scraper fetches data, a Node.js backend on Render processes and merges it with existing records while safeguarding manual edits, and a Next.js frontend on Vercel serves the optimized data via high-performance Static Site Generation (SSG).
+
+2. Core Architecture & System Flow
+The extension relies on an event-driven and scheduled pipeline spanning Apify, a Render Node.js backend service, a Cloudinary media bucket, and a Next.js Vercel app.
+
+
++------------------+       Trigger Sync (Cron / Manual UI)       +-------------------+
+|  Vercel Cron /   | ------------------------------------------> |   Render Backend  |
+|  CMS Admin Panel |                                             |  (Node.js / DB)   |
++------------------+                                             +-------------------+
+                                                                   │               ▲
+                                            1. Trigger Scrape &    │               │ 3. Store Permanent
+                                               Receive JSON data   ▼               │    Asset Links
+                                           +-------------------------+     +-------------------+
+                                           |     Apify Platform      |     |    Cloudinary     |
+                                           | (LinkedIn Profile Actor)|     |  (Media Storage)  |
+                                           +-------------------------+     +-------------------+
+                                                                                   ▲
+                                                                                   │ 2. Upload Ephemeral
+                                                                                   │    Media Buffers
+                                                                                   │
+                                                                   +-------------------+
+                                                                   |  Render Database  |
+                                                                   | (Persistent State)|
+                                                                   +-------------------+
+                                                                           │
+                                           4. Trigger On-Demand            │
+                                              Revalidation Webhook         ▼
+                                           +---------------------------------------------------+
+                                           |            Next.js Frontend (Vercel Edge)         |
+                                           |               (Static HTML Generation)            |
+                                           +---------------------------------------------------+
+
+
+2.1 Synchronization Infrastructure Components
+
+Scheduled Trigger: A native, zero-cost Vercel Cron Job configured to execute weekly. It hits a proxy endpoint on Next.js, which forwards a secure handshake to the Render backend to run the sync engine.
+
+On-Demand Manual Trigger: A secure "Sync LinkedIn" button built into the existing admin interface/CMS on Render, invoking the exact same sync logic instantly.
+
+Data Fetching & Revalidation: All pages rendering this data use Static Site Generation (SSG) for optimal Core Web Vitals and SEO. Upon successful database updates, the Render backend hits a secure Next.js route handler (/api/revalidate), forcing an immediate regeneration of the affected static pages without redeploying the site.
+
+
+
+3. Data Models & Schema Specification
+
+The existing Render database schema and collection must be extended to incorporate new fields/properties. Add extra fields map the existing fields to a smuch as possible
+
+3.1 EngagementAndActivity (Featured Posts)
+Old Schema COLLECTION TYPE: `EngagementAndActivity`
+   File: `cms/src/api/engagement-and-activity/content-types/engagement-and-activity/schema.json`
+   Fields:
+   - `title` — String, required
+   - `description` — Rich Text (Blocks), required
+   - `eventDate` — Date, required
+   - `isFeatured` — Boolean, default: false
+   - `gallery_items` — Relation: many-to-many with Gallery
+
+Tweaked Collection Type deatils COLLECTION TYPE:EngagementAndActivity
+linkedinPostId (String - Unique): The permanent, unique internal ID provided by Apify used to deduplicate items.postUrl (String): The direct, permanent link to the original post on LinkedIn.
+description (Long Text / Markdown): The main text body of the post. This field is custom-editable via the CMS.mediaUrls (Array of Strings): Permanent links to assets hosted in your Cloudinary account.
+mediaType (Enumeration: Image, Video, Carousel, ExternalLink)
+linkPreviewCard (JSON - Optional): Stores structured metadata (title, description, thumbnailUrl) if the post shares an external webpage.
+isPublished (Boolean): Default true. Allows manual toggling of visibility from your admin panel.
+
+3.2 Certification
+Old Schema COLLECTION TYPE: `Certification`
+   File: `cms/src/api/certification/content-types/certification/schema.json`
+   Fields:
+   - `title` — String, required
+   - `issuingBody` — String, required
+   - `badgeImage` — Media (single image), required
+   - `verificationUrl` — String, URL validation, required
+   - `expiryDate` — Date, optional
+
+
+Tweaked Collection Type deatils COLLECTION TYPE: `Certification`
+id (Primary Key / UUID)
+title (String): e.g., "Microsoft Certified: Azure Solutions Architect Expert".
+issuingBody (String): e.g., "Microsoft".
+badgeImageUrl (String): Permanent link to the badge image uploaded to Cloudinary.
+verificationUrl (String): Outbound link to Credley or the issuing authority's validation page.
+expiryDate (Date - Optional): Used by the rendering framework to filter out old credentials.
+isPublished (Boolean): Default true.
+
+
+
+4. Integration Logic & Edge-Case Engineering
+
+4.1 The Intelligent Merge EngineTo ensure automated syncs never destroy custom text adjustments or fine-tuning made within your database, the Render sync script must evaluate records based on distinct structural rules.
+
+TypeScript
+// Architectural Rule Implementation for the Sync Handler
+async function syncLinkedInData(incomingData) {
+  for (const item of incomingData.certifications) {
+    // Rule: Title + Issuing Body act as a composite key. Changes create a clean new record.
+    const existingCert = await DB.Certifications.findOne({
+      title: item.title,
+      issuingBody: item.issuingBody
+    });
+
+    if (!existingCert) {
+      const cloudinaryAsset = await Cloudinary.upload(item.rawBadgeUrl);
+      await DB.Certifications.create({
+        ...item,
+        badgeImageUrl: cloudinaryAsset.secure_url,
+        isPublished: true
+      });
+    }
+  }
+
+  for (const post of incomingData.featuredPosts) {
+    const existingPost = await DB.Activities.findOne({ linkedinPostId: post.id });
+
+    if (existingPost) {
+      // Intelligent Merge: Update media array assets but preserve custom-edited text content
+      const freshMedia = await syncMediaToCloudinary(post.mediaFiles);
+      await DB.Activities.updateOne(
+        { id: existingPost.id },
+        { $set: { mediaUrls: freshMedia } }
+      );
+    } else {
+      // Brand new item: upload media and publish live right away
+      const freshMedia = await syncMediaToCloudinary(post.mediaFiles);
+      await DB.Activities.create({
+        ...post,
+        linkedinPostId: post.id,
+        mediaUrls: freshMedia,
+        isPublished: true
+      });
+    }
+  }
+}
+
+4.2 Handling Ephemeral Media Assets
+
+LinkedIn media URLs extracted via web scrapers expire and break after a short window.
+
+The Fix: The syncing service on Render must intercept incoming media arrays, read the files into raw memory buffers, upload them immediately via the Cloudinary Node.js SDK, and record the permanent secure URLs ([https://res.cloudinary.com/](https://res.cloudinary.com/)...) in your database.
+
+
+4.3 Outbound Links Behavior
+
+To keep the portfolio light and high-performing, the frontend does not render custom local interactive blocks (like comments or reactions) for LinkedIn posts. When a user clicks a Featured Post block, the Next.js app routes them directly to the original postUrl using a standard _blank target window.
+
+
+5. Automation & Security Configurations
+
+5.1 Zero-Cost Weekly Cron Configuration (vercel.json)
+Placed in the root directory of your Next.js application, this configuration securely automates the pipeline on a weekly interval using Vercel's native infrastructure:
+
+JSON{
+  "crons": [
+    {
+      "path": "/api/cron/sync-linkedin",
+      "schedule": "0 0 * * 0"
+    }
+  ]
+}
+
+5.2 Next.js Route Token VerificationThe route handler verifies an internal handshake secret token to ensure arbitrary malicious HTTP requests cannot strain your Apify platform credits.
+
+TypeScript
+
+// app/api/cron/sync-linkedin/route.ts
+import { NextRequest, NextResponse } from 'next/server';
+
+export async function GET(req: NextRequest) {
+  const authHeader = req.headers.get('Authorization');
+  if (authHeader !== `Bearer ${process.env.CRON_SECRET_TOKEN}`) {
+    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+  }
+
+  // Forward request internally to Render backend endpoint with secure API Key signature
+  const renderResponse = await fetch(`${process.env.RENDER_BACKEND_URL}/api/sync-linkedin`, {
+    method: 'POST',
+    headers: { 'X-Sync-Token': process.env.RENDER_SYNC_TOKEN }
+  });
+
+  return NextResponse.json({ triggered: renderResponse.ok });
+}
+
+
+6. Comprehensive Error Handling Matrix
+Potential Failure PointAutomated Safeguard / Handling StrategyResulting App Behavior
+Apify Credit Limit ExhaustedCatch block intercepts 4xx/5xx API responses from Apify. Halts execution safely.Database retains its last successfully cached state. No broken fields surface.
+
+Cloudinary Upload TimeoutIndividual media upload wraps in a timeout promise wrapper. Logs error to tracking system.Skip saving that individual specific post to prevent broken image cards from going live.
+
+Expired CertificationsNext.js server-side queries inject an expiryDate check against the runtime date during build execution.Expired certifications automatically drop out of active array layouts without manual developer removal.
+
+Large Video Processing FrictionThe Cloudinary asset pipeline runs asynchronously using upload presets designed to compress large video formats into web-ready sizes.Highlegibility, fast performance loading on mobile view layouts via standard Next.js video tags.
+
+
+7. Strategic Testing Plan
+
+7.1 Unit Testing (Data Processing Layer)
+Verify that feeding duplicate linkedinPostId structures to the data handler updates media records correctly but preserves the existing textContent.
+Test the certification generation function by passing mock data with minor text spacing variations to verify that the application properly handles changes as fresh records as specified.
+
+7.2 Integration & Pipeline ValidationMock an unauthorized call to /api/cron/sync-linkedin to ensure a 401 Unauthorized status is thrown.
+Simulate a successful sync process locally and trace whether the Next.js On-Demand revalidation function accurately invalidates the targeted UI endpoints (/ and /certifications).
+
+7.3 Frontend Behavior & Production Readiness
+Verify that all components rendering dynamic activities use the properties target="_blank" rel="noopener noreferrer" to prevent security vulnerability exploits.
+
+Inspect live DOM layouts to confirm that background elements fallback to clean default styling states if an external resource does not return a linkPreviewCard item.
+
+
+
+
+
+
+ Plan: Apify LinkedIn Integration into Cron Route
+
+ Context
+
+ The cron job at /api/cron/sync-linkedin currently sends an empty body to Strapi, so no LinkedIn data ever flows. The sync       
+ engine on Strapi is ready to receive { certifications, featuredPosts } and process them — it just never gets any data.
+
+ Vercel Hobby plan has a 10s function execution limit. LinkedIn scraping takes 1–3 minutes, so we cannot wait synchronously. The 
+  solution is an async webhook architecture: cron triggers Apify and returns immediately; Apify calls back via webhook when the  
+ run finishes.
+
+ ---
+ Architecture
+
+ Vercel Cron (Sunday 2am)
+   GET /api/cron/sync-linkedin
+     ├─ Auth check (CRON_SECRET) — existing
+     ├─ POST to Apify API → trigger actor run (async, ~200ms)
+     │   └─ Registers webhook: /api/webhooks/apify-linkedin?secret=XXX
+     └─ Returns {triggered: true, runId} immediately (~1s total)
+
+ Apify runs actor (1–3 min on free plan)
+     └─ Scrapes LinkedIn profile certifications + posts
+     └─ On SUCCEEDED: POST /api/webhooks/apify-linkedin?secret=XXX
+
+ POST /api/webhooks/apify-linkedin (new route)
+     ├─ Validate ?secret= against APIFY_WEBHOOK_SECRET
+     ├─ Check eventType === 'ACTOR.RUN.SUCCEEDED'
+     ├─ Fetch dataset items from Apify API
+     ├─ Transform Apify output → LinkedInScraperPayload
+     └─ POST to Strapi /api/sync-linkedin (existing flow, unchanged)
+
+ ---
+ Apify Actor Setup (manual step for Akash)
+
+ 1. Sign up at https://apify.com (free plan — $5/month free credits)
+ 2. In Apify Console → Actors → Search Store → find "LinkedIn Profile Scraper" by bebity
+ Actor ID: bebity/linkedin-profile-scraper
+ 3. Go to Settings → Integrations → API tokens → create a token named profile-cron
+ 4. Note the actor ID from the actor's URL: bebity~linkedin-profile-scraper (slash → tilde for API calls)
+
+ Free plan cost estimate: Scraping one LinkedIn profile = ~0.05 CU = ~$0.0025/run. Weekly = ~$0.01/month. Well within $5 free    
+ credit.
+
+ ---
+ Files to Modify / Create
+
+ 1. profile/lib/apify.ts — NEW
+
+ Apify API client + LinkedIn output transformer.
+
+ - triggerLinkedInActorRun(opts) — POSTs to https://api.apify.com/v2/acts/{actorId}/runs with startUrls and webhooks config.     
+ Returns { runId }.
+ - fetchDatasetItems(datasetId) — GETs https://api.apify.com/v2/datasets/{datasetId}/items?clean=true. Returns raw items array.  
+ - transformLinkedInOutput(items) — maps Apify profile output → LinkedInScraperPayload. Handles the
+ bebity/linkedin-profile-scraper output format:
+   - profile.certifications[] → IncomingCertification[]
+   - profile.posts[] or profile.activity[] → IncomingFeaturedPost[] (empty array if not present — sync engine handles
+ gracefully)
+
+ 2. profile/app/api/cron/sync-linkedin/route.ts — REPLACE
+
+ Currently forwards empty body to Strapi directly. New version:
+ - Same auth check (CRON_SECRET)
+ - Validates new env vars are present (APIFY_TOKEN, APIFY_ACTOR_ID, LINKEDIN_PROFILE_URL, APIFY_WEBHOOK_SECRET)
+ - Calls triggerLinkedInActorRun() from lib/apify.ts
+ - Returns {triggered: true, runId} immediately — no Strapi call here anymore
+
+ 3. profile/app/api/webhooks/apify-linkedin/route.ts — NEW
+
+ Webhook handler called by Apify on run completion:
+ - Validates ?secret= query param against APIFY_WEBHOOK_SECRET
+ - Accepts Apify webhook payload: { eventType, resource: { status, defaultDatasetId } }
+ - On ACTOR.RUN.SUCCEEDED: fetches dataset, transforms, POSTs to Strapi
+ - On ACTOR.RUN.FAILED: logs and returns 200 (Apify requires 2xx or it retries)
+ - Reuses existing STRAPI_API_URL + RENDER_SYNC_TOKEN env vars (no new Render config needed)
+
+ ---
+ New Env Vars (Vercel only — no Render changes)
+
+ ┌──────────────────────┬───────────────────────────────────────────┐
+ │         Var          │                   Value                   │
+ ├──────────────────────┼───────────────────────────────────────────┤
+ │ APIFY_TOKEN          │ From Apify → Settings → API tokens        │
+ ├──────────────────────┼───────────────────────────────────────────┤
+ │ APIFY_ACTOR_ID       │ bebity~linkedin-profile-scraper           │
+ ├──────────────────────┼───────────────────────────────────────────┤
+ │ LINKEDIN_PROFILE_URL │ https://www.linkedin.com/in/akashdborkar/ │
+ ├──────────────────────┼───────────────────────────────────────────┤
+ │ APIFY_WEBHOOK_SECRET │ openssl rand -base64 32                   │
+ └──────────────────────┴───────────────────────────────────────────┘
+
+ Render (Strapi) requires no new env vars — it already has everything needed to receive and process the payload.
+
+ ---
+ Apify Output → LinkedInScraperPayload Transformer
+
+ The bebity/linkedin-profile-scraper returns an array with one profile object per input URL. Expected shape (relevant fields):   
+
+ {
+   "certifications": [{
+     "name": "AWS Certified Solutions Architect",
+     "authority": "Amazon Web Services",
+     "licenseNumber": "ABC123",
+     "url": "https://www.credly.com/badges/...",
+     "timePeriod": { "endDate": { "year": 2026, "month": 3 } }
+   }],
+   "posts": [{
+     "id": "urn:li:activity:7...",
+     "url": "https://www.linkedin.com/posts/...",
+     "text": "Post text...",
+     "images": ["https://media.licdn.com/..."],
+     "createdAt": "2024-01-15T10:00:00.000Z",
+     "type": "IMAGE"
+   }]
+ }
+
+ Transformer maps:
+ - cert.name → title, cert.authority → issuingBody
+ - cert.licenseNumber → linkedinCertId (dedupe key)
+ - cert.url → verificationUrl
+ - cert.timePeriod.endDate → expiryDate (formatted as YYYY-MM-DD)
+ - Badge image: LinkedIn certification badge URL pattern from cert.imageUrl if present, else empty string (sync engine handles   
+ missing badge gracefully via upload skip)
+ - post.id → linkedinPostId, post.url → postUrl, post.text → textContent
+ - post.images → mediaUrls, post.type → mediaType (normalized to enum values)
+ - post.createdAt → postedAt
+
+ If actor output format differs, the transformer is the only file to update.
+
+ ---
+ Verification
+
+ 1. Add all 4 env vars to Vercel project settings
+ 2. Deploy (or trigger via Vercel dashboard → Functions → cron → Run)
+ 3. Check Vercel function logs: should see {triggered: true, runId: "xxx"} within ~2s
+ 4. Check Apify Console → Runs: run should appear and complete in 1–3 min
+ 5. After run completes, check Vercel function logs for /api/webhooks/apify-linkedin — should show {success: true, certsSynced:  
+ N, activitiesSynced: N}
+ 6. Check Strapi admin → Certifications and Engagements for new entries
+╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌

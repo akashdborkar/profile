@@ -5,9 +5,9 @@ import { extractFirstParagraph } from '@/lib/utils/richTextHelpers'
 import type { AboutMe } from '@/lib/types'
 
 const STATS = [
-  { value: '10+', label: 'Years Experience' },
-  { value: '50+', label: 'Projects Delivered' },
-  { value: '15+', label: 'Technologies' },
+  { value: '9+', label: 'Years Experience' },
+  { value: '7+', label: 'Projects' },
+  { value: '10+', label: 'Technologies' },
 ] as const
 
 interface AboutPreviewSectionProps {

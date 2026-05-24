@@ -1,18 +1,38 @@
 "use strict";
+var __createBinding = (this && this.__createBinding) || (Object.create ? (function(o, m, k, k2) {
+    if (k2 === undefined) k2 = k;
+    var desc = Object.getOwnPropertyDescriptor(m, k);
+    if (!desc || ("get" in desc ? !m.__esModule : desc.writable || desc.configurable)) {
+      desc = { enumerable: true, get: function() { return m[k]; } };
+    }
+    Object.defineProperty(o, k2, desc);
+}) : (function(o, m, k, k2) {
+    if (k2 === undefined) k2 = k;
+    o[k2] = m[k];
+}));
+var __setModuleDefault = (this && this.__setModuleDefault) || (Object.create ? (function(o, v) {
+    Object.defineProperty(o, "default", { enumerable: true, value: v });
+}) : function(o, v) {
+    o["default"] = v;
+});
+var __importStar = (this && this.__importStar) || function (mod) {
+    if (mod && mod.__esModule) return mod;
+    var result = {};
+    if (mod != null) for (var k in mod) if (k !== "default" && Object.prototype.hasOwnProperty.call(mod, k)) __createBinding(result, mod, k);
+    __setModuleDefault(result, mod);
+    return result;
+};
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.syncLoader = void 0;
 /**
- * Lazy loader for the sync engine. The `.fn` property is replaceable,
- * which lets tests inject a mock without mocking dynamic imports.
+ * Lazy loader — `.fn` is replaceable so tests can inject a mock directly
+ * without needing to mock the dynamic import.
  */
 exports.syncLoader = {
     fn: null,
     async get() {
         if (!this.fn) {
-            // new Function() prevents TypeScript from statically resolving the cross-package
-            // path during CMS compilation (rootDir constraint). At runtime Node.js loads it fine.
-            const load = new Function('m', 'return import(m)');
-            const mod = await load('../../../../../sync/src/sync-engine.service.js');
+            const mod = await Promise.resolve().then(() => __importStar(require('../../../sync/sync-engine.service')));
             this.fn = mod.syncLinkedInData;
         }
         return this.fn;
@@ -20,9 +40,15 @@ exports.syncLoader = {
 };
 exports.default = {
     async syncLinkedIn(ctx) {
+        var _a, _b;
         try {
             const syncFn = await exports.syncLoader.get();
-            const result = await syncFn(ctx.request.body);
+            const body = ctx.request.body;
+            const payload = {
+                certifications: (_a = body === null || body === void 0 ? void 0 : body.certifications) !== null && _a !== void 0 ? _a : [],
+                featuredPosts: (_b = body === null || body === void 0 ? void 0 : body.featuredPosts) !== null && _b !== void 0 ? _b : [],
+            };
+            const result = await syncFn(payload);
             ctx.status = 200;
             ctx.body = { success: true, ...result };
         }
