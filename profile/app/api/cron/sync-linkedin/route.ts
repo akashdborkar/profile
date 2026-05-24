@@ -1,32 +1,32 @@
 import { NextRequest, NextResponse } from 'next/server'
+import { triggerLinkedInActorRun } from '@/lib/apify'
 
 export async function GET(req: NextRequest) {
   const authHeader = req.headers.get('Authorization')
-  // Vercel automatically sets CRON_SECRET and injects it as the Bearer token on cron requests
   const expectedToken = process.env.CRON_SECRET
 
   if (!expectedToken || authHeader !== `Bearer ${expectedToken}`) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
   }
 
+  const apifyToken = process.env.APIFY_TOKEN
+  const actorId = process.env.APIFY_ACTOR_ID
+  const profileUrl = process.env.LINKEDIN_PROFILE_URL
+  const webhookSecret = process.env.APIFY_WEBHOOK_SECRET
+  const siteUrl = process.env.NEXT_PUBLIC_SITE_URL
+
+  if (!apifyToken || !actorId || !profileUrl || !webhookSecret || !siteUrl) {
+    return NextResponse.json({ error: 'Missing Apify configuration env vars' }, { status: 500 })
+  }
+
   try {
-    const strapiRes = await fetch(`${process.env.STRAPI_API_URL}/api/sync-linkedin`, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'X-Sync-Token': process.env.RENDER_SYNC_TOKEN ?? '',
-      },
-    })
-
-    if (strapiRes.ok) {
-      return NextResponse.json({ triggered: true })
-    }
-
+    const webhookUrl = `${siteUrl}/api/webhooks/apify-linkedin?secret=${webhookSecret}`
+    const { runId } = await triggerLinkedInActorRun({ apifyToken, actorId, profileUrl, webhookUrl })
+    return NextResponse.json({ triggered: true, runId })
+  } catch (err) {
     return NextResponse.json(
-      { triggered: false, status: strapiRes.status },
+      { triggered: false, error: err instanceof Error ? err.message : 'Apify trigger failed' },
       { status: 502 }
     )
-  } catch {
-    return NextResponse.json({ triggered: false, error: 'Network error' }, { status: 502 })
   }
 }
