@@ -1,6 +1,6 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.uploadBadgeToStrapiMedia = exports.createCertification = exports.findCertificationByCompositeKey = exports.findCertificationByLinkedinCertId = exports.updateEngagementMedia = exports.createEngagement = exports.findEngagementByLinkedinPostId = void 0;
+exports.uploadBadgeToStrapiMedia = exports.createCertification = exports.findCertificationByCompositeKey = exports.findCertificationByLinkedinCertId = exports.createEngagement = exports.findEngagementByLinkedinPostId = void 0;
 function getEnv(key) {
     const val = process.env[key];
     if (!val)
@@ -34,18 +34,6 @@ async function strapiPost(path, body) {
     }
     return res.json();
 }
-async function strapiPut(path, body) {
-    const res = await fetch(`${baseUrl()}${path}`, {
-        method: 'PUT',
-        headers: authHeaders(),
-        body: JSON.stringify({ data: body }),
-    });
-    if (!res.ok) {
-        const text = await res.text();
-        throw new Error(`Strapi PUT ${path} failed: ${res.status} — ${text}`);
-    }
-    return res.json();
-}
 async function findEngagementByLinkedinPostId(postId) {
     var _a;
     const encoded = encodeURIComponent(postId);
@@ -58,10 +46,6 @@ async function createEngagement(data) {
     return res.data;
 }
 exports.createEngagement = createEngagement;
-async function updateEngagementMedia(documentId, mediaUrls) {
-    await strapiPut(`/api/engagement-and-activities/${documentId}`, { mediaUrls });
-}
-exports.updateEngagementMedia = updateEngagementMedia;
 async function findCertificationByLinkedinCertId(linkedinCertId) {
     var _a;
     const encoded = encodeURIComponent(linkedinCertId);

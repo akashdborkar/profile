@@ -39,16 +39,6 @@
         },
         "postUrl": {
             "type": "string"
-        },
-        "mediaUrls": {
-            "type": "json"
-        },
-        "mediaType": {
-            "type": "enumeration",
-            "enum": ["Image", "Video", "Carousel", "ExternalLink"]
-        },
-        "linkPreviewCard": {
-            "type": "json"
         }
     }
 }

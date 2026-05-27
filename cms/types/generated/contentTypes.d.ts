@@ -463,6 +463,7 @@ export interface ApiAboutMeAboutMe extends Struct.SingleTypeSchema {
     > &
       Schema.Attribute.Private;
     professionalNarrative: Schema.Attribute.Blocks & Schema.Attribute.Required;
+    profileImage: Schema.Attribute.Media<'images'>;
     publishedAt: Schema.Attribute.DateTime;
     resumeFile: Schema.Attribute.Media<'files'>;
     socialLinks: Schema.Attribute.Component<'shared.social-link', true>;
@@ -523,12 +524,13 @@ export interface ApiCertificationCertification
     draftAndPublish: true;
   };
   attributes: {
-    badgeImage: Schema.Attribute.Media<'images'> & Schema.Attribute.Required;
+    badgeImage: Schema.Attribute.Media<'images'>;
     createdAt: Schema.Attribute.DateTime;
     createdBy: Schema.Attribute.Relation<'oneToOne', 'admin::user'> &
       Schema.Attribute.Private;
     expiryDate: Schema.Attribute.Date;
     issuingBody: Schema.Attribute.String & Schema.Attribute.Required;
+    linkedinCertId: Schema.Attribute.String;
     locale: Schema.Attribute.String & Schema.Attribute.Private;
     localizations: Schema.Attribute.Relation<
       'oneToMany',
@@ -541,6 +543,39 @@ export interface ApiCertificationCertification
     updatedBy: Schema.Attribute.Relation<'oneToOne', 'admin::user'> &
       Schema.Attribute.Private;
     verificationUrl: Schema.Attribute.String & Schema.Attribute.Required;
+  };
+}
+
+export interface ApiContactContact extends Struct.SingleTypeSchema {
+  collectionName: 'contact';
+  info: {
+    description: 'Contact details for the profile page';
+    displayName: 'Contact';
+    pluralName: 'contacts';
+    singularName: 'contact';
+  };
+  options: {
+    draftAndPublish: true;
+  };
+  attributes: {
+    createdAt: Schema.Attribute.DateTime;
+    createdBy: Schema.Attribute.Relation<'oneToOne', 'admin::user'> &
+      Schema.Attribute.Private;
+    email: Schema.Attribute.Email & Schema.Attribute.Required;
+    githubUrl: Schema.Attribute.String;
+    linkedinUrl: Schema.Attribute.String;
+    locale: Schema.Attribute.String & Schema.Attribute.Private;
+    localizations: Schema.Attribute.Relation<
+      'oneToMany',
+      'api::contact.contact'
+    > &
+      Schema.Attribute.Private;
+    phone: Schema.Attribute.String & Schema.Attribute.Required;
+    phoneLabel: Schema.Attribute.String & Schema.Attribute.DefaultTo<'Home'>;
+    publishedAt: Schema.Attribute.DateTime;
+    updatedAt: Schema.Attribute.DateTime;
+    updatedBy: Schema.Attribute.Relation<'oneToOne', 'admin::user'> &
+      Schema.Attribute.Private;
   };
 }
 
@@ -567,12 +602,14 @@ export interface ApiEngagementAndActivityEngagementAndActivity
       'api::gallery.gallery'
     >;
     isFeatured: Schema.Attribute.Boolean & Schema.Attribute.DefaultTo<false>;
+    linkedinPostId: Schema.Attribute.String;
     locale: Schema.Attribute.String & Schema.Attribute.Private;
     localizations: Schema.Attribute.Relation<
       'oneToMany',
       'api::engagement-and-activity.engagement-and-activity'
     > &
       Schema.Attribute.Private;
+    postUrl: Schema.Attribute.String;
     publishedAt: Schema.Attribute.DateTime;
     title: Schema.Attribute.String & Schema.Attribute.Required;
     updatedAt: Schema.Attribute.DateTime;
@@ -682,6 +719,7 @@ export interface ApiProjectProject extends Struct.CollectionTypeSchema {
       'api::project.project'
     > &
       Schema.Attribute.Private;
+    projectUrl: Schema.Attribute.String;
     publishedAt: Schema.Attribute.DateTime;
     skills_matrices: Schema.Attribute.Relation<
       'manyToMany',
@@ -1266,6 +1304,7 @@ declare module '@strapi/strapi' {
       'api::about-me.about-me': ApiAboutMeAboutMe;
       'api::blog.blog': ApiBlogBlog;
       'api::certification.certification': ApiCertificationCertification;
+      'api::contact.contact': ApiContactContact;
       'api::engagement-and-activity.engagement-and-activity': ApiEngagementAndActivityEngagementAndActivity;
       'api::featured-curation.featured-curation': ApiFeaturedCurationFeaturedCuration;
       'api::gallery.gallery': ApiGalleryGallery;

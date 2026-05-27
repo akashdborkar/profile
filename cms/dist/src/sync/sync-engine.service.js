@@ -69,13 +69,10 @@ async function syncCertification(cert, strapi, media) {
     });
     return true;
 }
-async function syncFeaturedPost(post, strapi, media) {
+async function syncFeaturedPost(post, strapi) {
     const existing = await strapi.findEngagementByLinkedinPostId(post.linkedinPostId);
-    const permanentMediaUrls = await media.syncPostMediaToCloudinary(post.mediaUrls);
-    if (existing) {
-        await strapi.updateEngagementMedia(existing.documentId, permanentMediaUrls);
-        return true;
-    }
+    if (existing)
+        return false;
     await strapi.createEngagement({
         title: post.textContent.trim().slice(0, 100),
         description: toBlocksDescription(post.textContent),
@@ -83,9 +80,6 @@ async function syncFeaturedPost(post, strapi, media) {
         isFeatured: false,
         linkedinPostId: post.linkedinPostId,
         postUrl: post.postUrl,
-        mediaUrls: permanentMediaUrls,
-        mediaType: post.mediaType,
-        ...(post.linkPreviewCard && { linkPreviewCard: post.linkPreviewCard }),
     });
     return true;
 }
@@ -107,7 +101,7 @@ async function syncLinkedInData(incomingData, deps = {}) {
     }
     for (const post of incomingData.featuredPosts) {
         try {
-            if (await syncFeaturedPost(post, strapi, media))
+            if (await syncFeaturedPost(post, strapi))
                 activitiesSynced++;
         }
         catch (err) {
