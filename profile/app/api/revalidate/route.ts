@@ -10,6 +10,7 @@ const MODEL_TO_TAG_MAP: Record<string, string[]> = {
   gallery:                   ['gallery'],
   certification:             ['certifications'],
   'engagement-and-activity': ['engagements'],
+  contact:                   ['contact'],
 }
 
 export async function POST(request: NextRequest) {

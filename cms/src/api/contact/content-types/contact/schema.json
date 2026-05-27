@@ -1,0 +1,34 @@
+{
+  "kind": "singleType",
+  "collectionName": "contact",
+  "info": {
+    "singularName": "contact",
+    "pluralName": "contacts",
+    "displayName": "Contact",
+    "description": "Contact details for the profile page"
+  },
+  "options": {
+    "draftAndPublish": true
+  },
+  "pluginOptions": {},
+  "attributes": {
+    "phone": {
+      "type": "string",
+      "required": true
+    },
+    "phoneLabel": {
+      "type": "string",
+      "default": "Home"
+    },
+    "email": {
+      "type": "email",
+      "required": true
+    },
+    "linkedinUrl": {
+      "type": "string"
+    },
+    "githubUrl": {
+      "type": "string"
+    }
+  }
+}

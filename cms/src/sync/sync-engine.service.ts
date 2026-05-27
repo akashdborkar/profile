@@ -1,6 +1,6 @@
 import * as defaultStrapi from './strapi-client'
 import * as defaultMedia from './media-processor'
-import type { StrapiBlock, MediaType, LinkPreviewCard } from './strapi-client'
+import type { StrapiBlock } from './strapi-client'
 
 export interface IncomingCertification {
   linkedinCertId: string
@@ -15,9 +15,6 @@ export interface IncomingFeaturedPost {
   linkedinPostId: string
   postUrl: string
   textContent: string
-  mediaUrls: string[]
-  mediaType: MediaType
-  linkPreviewCard?: LinkPreviewCard
   postedAt: string
 }
 
@@ -38,13 +35,9 @@ type StrapiDeps = Pick<
   | 'createCertification'
   | 'findEngagementByLinkedinPostId'
   | 'createEngagement'
-  | 'updateEngagementMedia'
 >
 
-type MediaDeps = Pick<
-  typeof defaultMedia,
-  'syncPostMediaToCloudinary' | 'uploadBadgeViaStrapi'
->
+type MediaDeps = Pick<typeof defaultMedia, 'uploadBadgeViaStrapi'>
 
 export interface SyncDeps {
   strapi?: StrapiDeps
@@ -109,16 +102,10 @@ async function syncCertification(
 
 async function syncFeaturedPost(
   post: IncomingFeaturedPost,
-  strapi: StrapiDeps,
-  media: MediaDeps
+  strapi: StrapiDeps
 ): Promise<boolean> {
   const existing = await strapi.findEngagementByLinkedinPostId(post.linkedinPostId)
-  const permanentMediaUrls = await media.syncPostMediaToCloudinary(post.mediaUrls)
-
-  if (existing) {
-    await strapi.updateEngagementMedia(existing.documentId, permanentMediaUrls)
-    return true
-  }
+  if (existing) return false
 
   await strapi.createEngagement({
     title: post.textContent.trim().slice(0, 100),
@@ -127,9 +114,6 @@ async function syncFeaturedPost(
     isFeatured: false,
     linkedinPostId: post.linkedinPostId,
     postUrl: post.postUrl,
-    mediaUrls: permanentMediaUrls,
-    mediaType: post.mediaType,
-    ...(post.linkPreviewCard && { linkPreviewCard: post.linkPreviewCard }),
   })
 
   return true
@@ -156,7 +140,7 @@ export async function syncLinkedInData(
 
   for (const post of incomingData.featuredPosts) {
     try {
-      if (await syncFeaturedPost(post, strapi, media)) activitiesSynced++
+      if (await syncFeaturedPost(post, strapi)) activitiesSynced++
     } catch (err) {
       console.error(`[sync-engine] Failed to sync post "${post.linkedinPostId}":`, err)
     }

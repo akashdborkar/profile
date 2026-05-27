@@ -12,8 +12,10 @@ export async function generateMetadata(): Promise<Metadata> {
   try {
     const aboutMe = await fetchAboutMe()
     return {
-      title: 'About | Lead Technical Consultant',
+      title: 'About Akash Borkar | Lead Technical Consultant',
       description: aboutMe.elevatorPitch.replace(/\n/g, ' ').substring(0, 160),
+      alternates: { canonical: '/about' },
+      keywords: ['Akash Borkar', 'about Akash Borkar', 'Lead Technical Consultant', 'Technical Consultant'],
     }
   } catch {
     return { title: 'About | Lead Technical Consultant' }

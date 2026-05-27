@@ -38,7 +38,18 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
       )
     : undefined
 
-  return { title: blog.title, description: description || undefined }
+  return {
+    title: blog.title,
+    description: description || undefined,
+    alternates: { canonical: `/blog/${blog.slug}` },
+    openGraph: {
+      type: 'article',
+      title: blog.title,
+      description: description || undefined,
+      publishedTime: blog.publishedAt ?? undefined,
+      authors: ['Akash Borkar'],
+    },
+  }
 }
 
 export default async function BlogSlugPage({ params }: Props) {
@@ -63,8 +74,22 @@ export default async function BlogSlugPage({ params }: Props) {
       )
     : null
 
+  const siteUrl = process.env.NEXT_PUBLIC_SITE_URL ?? 'https://akashdborkar.vercel.app'
+  const blogJsonLd = {
+    '@context': 'https://schema.org',
+    '@type': 'BlogPosting',
+    headline: blog.title,
+    author: { '@type': 'Person', name: 'Akash Borkar', url: siteUrl },
+    url: `${siteUrl}/blog/${blog.slug}`,
+    ...(blog.publishedAt && { datePublished: blog.publishedAt }),
+  }
+
   return (
     <>
+      <script
+        type="application/ld+json"
+        dangerouslySetInnerHTML={{ __html: JSON.stringify(blogJsonLd) }}
+      />
       <Navbar />
       <main>
         <div className="max-w-3xl mx-auto px-4 py-12">

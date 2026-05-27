@@ -1,7 +1,5 @@
 const APIFY_BASE = 'https://api.apify.com/v2'
 
-export type ApifyMediaType = 'Image' | 'Video' | 'Carousel' | 'ExternalLink'
-
 export interface IncomingCertification {
   linkedinCertId: string
   title: string
@@ -15,8 +13,6 @@ export interface IncomingFeaturedPost {
   linkedinPostId: string
   postUrl: string
   textContent: string
-  mediaUrls: string[]
-  mediaType: ApifyMediaType
   postedAt: string
 }
 
@@ -110,14 +106,6 @@ function toExpiryDate(raw: unknown): string | undefined {
   return undefined
 }
 
-function normalizeMediaType(raw: unknown): IncomingFeaturedPost['mediaType'] {
-  const s = String(raw ?? '').toLowerCase()
-  if (s.includes('video')) return 'Video'
-  if (s.includes('carousel') || s.includes('multi')) return 'Carousel'
-  if (s.includes('link') || s.includes('external') || s.includes('article')) return 'ExternalLink'
-  return 'Image'
-}
-
 function transformCertification(cert: RawCert): IncomingCertification | null {
   const title = (cert.name ?? cert.title) as string | undefined
   const issuingBody = (cert.authority ?? cert.issuingOrganization ?? cert.company) as string | undefined
@@ -156,18 +144,10 @@ function transformPost(post: RawPost): IncomingFeaturedPost | null {
 
   if (!linkedinPostId || !postUrl) return null
 
-  const rawImages = (post.images ?? post.mediaUrls ?? []) as string[]
-  const mediaUrls = Array.isArray(rawImages) ? rawImages.filter(Boolean) : []
-
-  const rawType = post.type ?? post.activityType ?? post.mediaType
-  const mediaType = normalizeMediaType(rawType)
-
   return {
     linkedinPostId,
     postUrl,
     textContent,
-    mediaUrls,
-    mediaType,
     postedAt,
   }
 }

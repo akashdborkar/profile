@@ -28,7 +28,7 @@ export function HeroSection({ aboutMe }: HeroSectionProps) {
   const profileImageUrl = aboutMe.profileImage?.url ?? null
 
   return (
-    <div className="relative min-h-screen flex flex-col justify-center overflow-hidden">
+    <div className="relative overflow-hidden">
       {/* Decorative radial gradient orb */}
       <div
         aria-hidden="true"
@@ -38,7 +38,7 @@ export function HeroSection({ aboutMe }: HeroSectionProps) {
         }}
       />
 
-      <div className="relative max-w-6xl mx-auto px-4 md:px-8 lg:px-16 py-20 w-full">
+      <div className="relative max-w-6xl mx-auto px-4 md:px-8 lg:px-16 py-10 w-full">
         <div className="grid grid-cols-1 md:grid-cols-2 items-center gap-12">
 
           {/* Left — text content */}
@@ -49,7 +49,7 @@ export function HeroSection({ aboutMe }: HeroSectionProps) {
             </p>
 
             {/* Elevator pitch */}
-            <h3 className="text-3xl md:text-4xl font-bold leading-tight text-foreground mb-6 whitespace-pre-line">
+            <h3 className="text-2xl md:text-2xl font-bold leading-tight text-foreground mb-6 whitespace-pre-line">
               {aboutMe.elevatorPitch}
             </h3>
 

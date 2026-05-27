@@ -1,6 +1,7 @@
 import { strapiRequest } from './strapi'
 import type {
   AboutMe,
+  Contact,
   FeaturedCurations,
   SkillsMatrix,
   Project,
@@ -38,6 +39,18 @@ export async function fetchAboutMe(): Promise<AboutMe> {
   )
   if (!res.data) throw new Error('AboutMe content not found in Strapi')
   return res.data
+}
+
+export async function fetchContact(): Promise<Contact | null> {
+  try {
+    const res = await strapiRequest<StrapiSingleResponse<Contact>>(
+      '/api/contact',
+      { tags: ['contact'] }
+    )
+    return res.data
+  } catch {
+    return null
+  }
 }
 
 export async function fetchFeaturedCurations(): Promise<FeaturedCurations | null> {

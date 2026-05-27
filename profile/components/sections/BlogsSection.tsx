@@ -16,6 +16,8 @@ function BlogRow({ blog }: { blog: Blog }) {
   return (
     <Link
       href={`/blog/${blog.slug}`}
+      target="_blank"
+      rel="noopener noreferrer"
       className="group flex items-start justify-between gap-4 py-4 border-b border-border last:border-0 hover:text-accent transition-colors"
     >
       <div className="flex items-center gap-3 min-w-0">
@@ -43,7 +45,9 @@ export function BlogsSection({ blogs }: Props) {
   return (
     <div>
       <div className="flex items-center justify-between mb-8">
-        <h2 className="text-3xl font-bold text-foreground">Latest Writing</h2>
+        <Link href="/blog" className="text-3xl font-bold text-foreground hover:text-accent transition-colors">
+            Blogs
+          </Link>
         {blogs.length > 3 && (
           <Link
             href="/blog"

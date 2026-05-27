@@ -25,33 +25,15 @@ function getDescriptor(item: FeaturedContentItem): string {
   }
 }
 
-function CardLinkWrapper({
-  item,
-  children,
-}: {
-  item: FeaturedContentItem
-  children: React.ReactNode
-}) {
+function getHref(item: FeaturedContentItem): string | null {
   if (item.kind === 'blog') {
-    if (item.data.isExternal && item.data.externalUrl) {
-      return (
-        <a
-          href={item.data.externalUrl}
-          target="_blank"
-          rel="noopener noreferrer"
-          onClick={() => trackExternalBlogClick(item.data.title, item.data.externalUrl!)}
-        >
-          {children}
-        </a>
-      )
-    }
-    return <Link href={`/blog/${item.data.slug}`}>{children}</Link>
+    return item.data.isExternal ? (item.data.externalUrl ?? null) : `/blog/${item.data.slug}`
   }
   if (item.kind === 'project') {
-    return <Link href={`/case-studies/${item.data.slug}`}>{children}</Link>
+    return `/case-studies/${item.data.slug}`
   }
-  // Engagement — no deep link
-  return <>{children}</>
+  // engagement
+  return item.data.postUrl ?? null
 }
 
 interface FeaturedCardProps {
@@ -60,30 +42,45 @@ interface FeaturedCardProps {
 
 export function FeaturedCard({ item }: FeaturedCardProps) {
   const { label, color } = KIND_CONFIG[item.kind]
+  const href = getHref(item)
+  const isExternal =
+    (item.kind === 'blog' && item.data.isExternal && !!item.data.externalUrl) ||
+    item.kind === 'engagement'
 
-  return (
-    <Card className="hover:shadow-lg hover:border-accent/50 transition-all flex flex-col">
+  const card = (
+    <Card className={cn(
+      'hover:shadow-lg hover:border-accent/50 transition-all flex flex-col h-full',
+      href && 'cursor-pointer'
+    )}>
       <CardContent className="pt-4 flex flex-col gap-3 flex-1">
-        {/* Kind badge */}
-        <span
-          className={cn(
-            'self-start text-xs font-semibold uppercase tracking-wider px-2 py-0.5 rounded-full',
-            color
-          )}
-        >
+        <span className={cn(
+          'self-start text-xs font-semibold uppercase tracking-wider px-2 py-0.5 rounded-full',
+          color
+        )}>
           {label}
         </span>
-
-        {/* Title */}
-        <CardLinkWrapper item={item}>
-          <h3 className="text-base font-semibold leading-snug hover:text-accent transition-colors line-clamp-2">
-            {item.data.title}
-          </h3>
-        </CardLinkWrapper>
-
-        {/* Descriptor */}
+        <h3 className="text-base font-semibold leading-snug line-clamp-2">
+          {item.data.title}
+        </h3>
         <p className="text-sm text-muted-foreground mt-auto">{getDescriptor(item)}</p>
       </CardContent>
     </Card>
   )
+
+  if (!href) return card
+
+  if (isExternal) {
+    return (
+      <a
+        href={href}
+        target="_blank"
+        rel="noopener noreferrer"
+        onClick={() => trackExternalBlogClick(item.data.title, href)}
+      >
+        {card}
+      </a>
+    )
+  }
+
+  return <Link href={href}>{card}</Link>
 }

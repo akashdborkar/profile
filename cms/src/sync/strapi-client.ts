@@ -1,11 +1,3 @@
-export type MediaType = 'Image' | 'Video' | 'Carousel' | 'ExternalLink'
-
-export interface LinkPreviewCard {
-  title: string
-  description: string
-  thumbnailUrl: string
-}
-
 export interface StrapiBlock {
   type: string
   children: Array<{ type: string; text: string }>
@@ -20,9 +12,6 @@ export interface StrapiEngagement {
   isFeatured: boolean
   linkedinPostId?: string
   postUrl?: string
-  mediaUrls?: string[]
-  mediaType?: MediaType
-  linkPreviewCard?: LinkPreviewCard
   publishedAt: string | null
   createdAt: string
   updatedAt: string
@@ -49,9 +38,6 @@ export interface CreateEngagementInput {
   isFeatured: boolean
   linkedinPostId: string
   postUrl: string
-  mediaUrls: string[]
-  mediaType: MediaType
-  linkPreviewCard?: LinkPreviewCard
 }
 
 export interface CreateCertificationInput {
@@ -104,19 +90,6 @@ async function strapiPost<T>(path: string, body: unknown): Promise<{ data: T }> 
   return res.json() as Promise<{ data: T }>
 }
 
-async function strapiPut<T>(path: string, body: unknown): Promise<{ data: T }> {
-  const res = await fetch(`${baseUrl()}${path}`, {
-    method: 'PUT',
-    headers: authHeaders(),
-    body: JSON.stringify({ data: body }),
-  })
-  if (!res.ok) {
-    const text = await res.text()
-    throw new Error(`Strapi PUT ${path} failed: ${res.status} — ${text}`)
-  }
-  return res.json() as Promise<{ data: T }>
-}
-
 export async function findEngagementByLinkedinPostId(
   postId: string
 ): Promise<StrapiEngagement | null> {
@@ -135,16 +108,6 @@ export async function createEngagement(
     data
   )
   return res.data
-}
-
-export async function updateEngagementMedia(
-  documentId: string,
-  mediaUrls: string[]
-): Promise<void> {
-  await strapiPut<StrapiEngagement>(
-    `/api/engagement-and-activities/${documentId}`,
-    { mediaUrls }
-  )
 }
 
 export async function findCertificationByLinkedinCertId(

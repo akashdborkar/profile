@@ -10,19 +10,51 @@ const inter = Inter({
   variable: '--font-inter',
 })
 
+const SITE_URL = process.env.NEXT_PUBLIC_SITE_URL ?? 'https://akashdborkar.vercel.app'
+
 export const metadata: Metadata = {
+  metadataBase: new URL(SITE_URL),
   title: {
     default: 'Akash Borkar | Lead Technical Consultant',
     template: '%s | Akash Borkar',
   },
-  description: 'Senior technical consultant specialising in scalable web architecture, cloud delivery, and engineering leadership.',
+  description: 'Akash Borkar — Lead Technical Consultant with 9+ years of experience in scalable web architecture, cloud delivery, and engineering leadership.',
+  keywords: [
+    'Akash Borkar',
+    'Lead Technical Consultant',
+    'Technical Consultant',
+    'Software Architect',
+    'Cloud Delivery',
+    'Engineering Leadership',
+    'Akash Borkar profile',
+  ],
+  authors: [{ name: 'Akash Borkar', url: SITE_URL }],
+  creator: 'Akash Borkar',
+  alternates: { canonical: SITE_URL },
   openGraph: {
     type: 'website',
     locale: 'en_US',
-    url: process.env.NEXT_PUBLIC_SITE_URL ?? 'https://akashborkar.com',
-    siteName: 'Akash Borkar | Lead Technical Consultant',
+    url: SITE_URL,
+    siteName: 'Akash Borkar',
+    title: 'Akash Borkar | Lead Technical Consultant',
+    description: 'Akash Borkar — Lead Technical Consultant with 9+ years of experience in scalable web architecture, cloud delivery, and engineering leadership.',
   },
-  twitter: { card: 'summary_large_image' },
+  twitter: {
+    card: 'summary_large_image',
+    title: 'Akash Borkar | Lead Technical Consultant',
+    description: 'Akash Borkar — Lead Technical Consultant with 9+ years of experience in scalable web architecture, cloud delivery, and engineering leadership.',
+  },
+  robots: {
+    index: true,
+    follow: true,
+    googleBot: {
+      index: true,
+      follow: true,
+      'max-video-preview': -1,
+      'max-image-preview': 'large',
+      'max-snippet': -1,
+    },
+  },
 }
 
 export default function RootLayout({

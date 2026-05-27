@@ -23,52 +23,46 @@ export function CertificationCard({ cert, strapiUrl }: CertificationCardProps) {
     : null
 
   return (
-    <Card className="hover:border-accent/40 transition-colors">
-      <CardContent className="pt-4 flex flex-col gap-3">
-        {/* Badge image or placeholder */}
-        <div className="flex items-center justify-center h-16">
-          {badgeUrl ? (
-            <Image
-              src={badgeUrl}
-              alt={cert.badgeImage?.alternativeText ?? cert.title}
-              width={64}
-              height={64}
-              className="object-contain"
-              unoptimized
-            />
-          ) : (
-            <div className="w-16 h-16 rounded-full bg-accent/10 flex items-center justify-center text-accent text-xl font-bold">
-              {cert.issuingBody.charAt(0)}
-            </div>
-          )}
-        </div>
+    <a
+      href={cert.verificationUrl}
+      target="_blank"
+      rel="noopener noreferrer"
+      onClick={() => trackCertificationVerificationClick(cert.title, cert.verificationUrl)}
+    >
+      <Card className="hover:border-accent/40 hover:shadow-md transition-all cursor-pointer h-full">
+        <CardContent className="pt-4 flex flex-col gap-3">
+          <div className="flex items-center justify-center h-16">
+            {badgeUrl ? (
+              <Image
+                src={badgeUrl}
+                alt={cert.badgeImage?.alternativeText ?? cert.title}
+                width={64}
+                height={64}
+                className="object-contain"
+                unoptimized
+              />
+            ) : (
+              <div className="w-16 h-16 rounded-full bg-accent/10 flex items-center justify-center text-accent text-xl font-bold">
+                {cert.issuingBody.charAt(0)}
+              </div>
+            )}
+          </div>
 
-        {/* Title */}
-        <p className="text-sm font-semibold text-foreground leading-snug text-center">
-          {cert.title}
-        </p>
-
-        {/* Issuing body */}
-        <p className="text-xs text-muted-foreground text-center">{cert.issuingBody}</p>
-
-        {/* Expiry */}
-        {cert.expiryDate && (
-          <p className="text-xs text-muted-foreground text-center">
-            Expires: {formatExpiry(cert.expiryDate)}
+          <p className="text-sm font-semibold text-foreground leading-snug text-center">
+            {cert.title}
           </p>
-        )}
 
-        {/* Verify link */}
-        <a
-          href={cert.verificationUrl}
-          target="_blank"
-          rel="noopener noreferrer"
-          onClick={() => trackCertificationVerificationClick(cert.title, cert.verificationUrl)}
-          className="text-xs text-accent hover:underline underline-offset-4 text-center mt-auto"
-        >
-          Verify Credential →
-        </a>
-      </CardContent>
-    </Card>
+          <p className="text-xs text-muted-foreground text-center">{cert.issuingBody}</p>
+
+          {cert.expiryDate && (
+            <p className="text-xs text-muted-foreground text-center">
+              Expires: {formatExpiry(cert.expiryDate)}
+            </p>
+          )}
+
+          <p className="text-xs text-accent text-center mt-auto">Verify Credential →</p>
+        </CardContent>
+      </Card>
+    </a>
   )
 }

@@ -25,7 +25,7 @@ export function EngagementsSection({ engagements }: EngagementsSectionProps) {
       {sorted.length === 0 ? (
         <p className="text-muted-foreground text-sm">No engagements recorded yet.</p>
       ) : (
-        <div className="space-y-6">
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
           {sorted.map((engagement) => (
             <EngagementCard key={engagement.id} engagement={engagement} />
           ))}

@@ -78,6 +78,21 @@ export function CaseStudyLayout({ project }: Props) {
                 <p className="font-medium">{project.leadershipRole}</p>
               </CardContent>
             </Card>
+
+            {project.projectUrl && (
+              <a href={project.projectUrl} target="_blank" rel="noopener noreferrer">
+                <Card className="bg-muted/30 hover:border-accent/50 hover:shadow-md transition-all cursor-pointer">
+                  <CardContent className="pt-5 space-y-2">
+                    <p className="text-xs font-semibold uppercase tracking-widest text-muted-foreground">
+                      Live Project
+                    </p>
+                    <p className="font-medium text-accent">
+                      Explore {project.title} →
+                    </p>
+                  </CardContent>
+                </Card>
+              </a>
+            )}
           </div>
         </div>
       </div>

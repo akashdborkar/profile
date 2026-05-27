@@ -179,6 +179,14 @@ export interface Gallery extends StrapiEntity {
   categoryTag: GalleryCategoryTag
 }
 
+export interface Contact extends StrapiEntity {
+  phone: string
+  phoneLabel?: string
+  email: string
+  linkedinUrl?: string
+  githubUrl?: string
+}
+
 export interface Certification extends StrapiEntity {
   title: string
   issuingBody: string
@@ -195,9 +203,6 @@ export interface EngagementAndActivity extends StrapiEntity {
   gallery_items: Gallery[]
   linkedinPostId?: string
   postUrl?: string
-  mediaUrls?: string[]
-  mediaType?: 'Image' | 'Video' | 'Carousel' | 'ExternalLink'
-  linkPreviewCard?: { title: string; description: string; thumbnailUrl: string }
 }
 
 // ---------------------------------------------------------------------------

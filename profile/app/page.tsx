@@ -35,8 +35,24 @@ export default async function Home() {
   const certifications = certificationsResult.status === 'fulfilled' ? certificationsResult.value : null
   const engagements    = engagementsResult.status    === 'fulfilled' ? engagementsResult.value    : null
 
+  const siteUrl = process.env.NEXT_PUBLIC_SITE_URL ?? 'https://akashdborkar.vercel.app'
+
+  const personJsonLd = {
+    '@context': 'https://schema.org',
+    '@type': 'Person',
+    name: 'Akash Borkar',
+    jobTitle: 'Lead Technical Consultant',
+    url: siteUrl,
+    sameAs: ['https://www.linkedin.com/in/akashdborkar/'],
+    description: 'Lead Technical Consultant with 9+ years of experience in scalable web architecture, cloud delivery, and engineering leadership.',
+  }
+
   return (
     <>
+      <script
+        type="application/ld+json"
+        dangerouslySetInnerHTML={{ __html: JSON.stringify(personJsonLd) }}
+      />
       <Navbar />
       <main>
         <section id="hero">
