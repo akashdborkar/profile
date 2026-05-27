@@ -141,7 +141,6 @@ profile/
       groupSkillsByCategory.ts
       richTextHelpers.ts            # extractFirstParagraph for Strapi Blocks JSON
       analytics.ts                  # GA4 event helpers (guard: window.gtag)
-    actions/sendContactEmail.ts     # 'use server' — Resend API
   components/
     blocks/   # DynamicZoneRenderer, BlockErrorBoundary, HeroBlock, TextBlock, CodeBlock, CalloutBox, CopyButton
     sections/ # Page sections (HeroSection, SkillsMatrixSection, FeaturedSection, etc.)
@@ -151,12 +150,12 @@ cms/
   src/
     api/
       sync-linkedin/                # POST /api/sync-linkedin — verify-sync-token policy + controller
-      # + 8 content types: about-me, blog, project, skills-matrix, certification,
-      #                     engagement-and-activity, gallery, featured-curation
+      # + 9 content types: about-me, blog, project, skills-matrix, certification,
+      #                     engagement-and-activity, gallery, featured-curation, contact
     sync/
       sync-engine.service.ts        # Core sync logic — dedup, upsert, revalidate
       strapi-client.ts              # Self-referential Strapi REST calls (uses STRAPI_SYNC_API_TOKEN)
-      media-processor.ts            # Cloudinary upload helpers for badge images + post media
+      media-processor.ts            # Badge image upload helper (Cloudinary removed for post media)
     components/
       shared/       # social-link, curated-item
       content/      # hero-block, text-block, code-block, callout-box (blog Dynamic Zone)
@@ -169,7 +168,6 @@ cms/
 STRAPI_API_URL=http://localhost:1337
 STRAPI_API_TOKEN=...                    # Read-only Strapi token
 REVALIDATION_SECRET_TOKEN=...           # openssl rand -base64 32
-RESEND_API_KEY=...
 NEXT_PUBLIC_GA_MEASUREMENT_ID=G-XXXXXXXXXX
 NEXT_PUBLIC_STRAPI_HOST=...             # Strapi hostname for next/image domain allowlist
 NEXT_PUBLIC_SITE_URL=https://akashborkar.com
@@ -202,9 +200,17 @@ REVALIDATION_SECRET_TOKEN=...          # Must match Vercel value
 
 **CMS admin:** `admin@profile.local` — change password at `/admin` on first use.
 
-**To update the pre-built admin panel** (after schema changes):
+**IMPORTANT — CMS dist build rule:** Render serves `cms/dist/` directly (pre-built locally) because the Strapi admin Vite build OOMs on Render's 512 MB free tier. Render's build command is `npm install` only — it never runs `strapi build`. This means **every commit that changes anything in `cms/src/` or `cms/src/api/*/schema.json` must also include a rebuilt `cms/dist/`**, otherwise the schema changes will never reach production.
+
+After any CMS change:
 ```bash
-cd cms && npm run build && git add -f dist/ && git commit && git push
+# If a new content type was added, regenerate TS types first
+cd cms && npx strapi ts:generate-types
+
+# Always rebuild and force-add dist
+cd cms && npm run build
+git add -f cms/dist/
+git add cms/types/generated/contentTypes.d.ts   # if types were regenerated
 ```
 
 ## LinkedIn Data Sync

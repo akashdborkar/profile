@@ -132,7 +132,7 @@ cms/                              ← Strapi v5 backend
 |---|---|---|
 | `/` | Static | SPA home — Hero, About preview, Skills, Featured, Certifications, Engagements |
 | `/about` | Static | Full professional narrative + CV download + social links |
-| `/contact` | Static | Contact form (Resend Server Action) |
+| `/contact` | Static | Contact details (phone, email, LinkedIn, GitHub — CMS-driven) |
 | `/blog/[slug]` | SSG | Internal blog with Dynamic Zone blocks; external blogs server-redirect |
 | `/case-studies/[slug]` | SSG | Project deep-dive with challenge/solution + skills sidebar |
 | `/api/revalidate` | Dynamic | Strapi webhook receiver — clears Next.js cache tags on publish |
@@ -191,19 +191,7 @@ Each block is individually wrapped in a `BlockErrorBoundary` — a single broken
 
 The home page fetches all six sections in parallel via `Promise.allSettled`. Any section whose fetch fails independently renders a `<SectionUnavailable>` fallback message — the rest of the page is unaffected.
 
-### 5. Contact Form
-
-```
-User submits form
-  → ContactForm (client component) calls sendContactEmail Server Action
-  → Server validates fields + email format
-  → Resend API sends email
-  → Success: toast notification
-  → Resend 429: LinkedIn fallback message shown
-  → Other error: generic retry message shown
-```
-
-### 6. LinkedIn Data Sync (Weekly Cron)
+### 5. LinkedIn Data Sync (Weekly Cron)
 
 Certifications and featured activities are automatically synced from LinkedIn via an async webhook pipeline. The Vercel function must return within 10 seconds (Hobby plan limit), so the Apify scrape is fully decoupled.
 
@@ -263,7 +251,8 @@ The `sovereigntaylor~linkedin-profile-scraper` actor uses **CheerioCrawler** (pl
 | **Project** | Collection | `slug`, `leadershipRole`, `challenge` (Blocks), `solution` (Blocks), `skills_matrices[]` |
 | **SkillsMatrix** | Collection | `skillName`, `category` (9 enum values), `yearsOfExperience` |
 | **Certification** | Collection | `title`, `issuingBody`, `badgeImage`, `verificationUrl`, `expiryDate` |
-| **EngagementAndActivity** | Collection | `title`, `description` (Blocks), `eventDate`, `isFeatured`, `gallery_items[]` |
+| **EngagementAndActivity** | Collection | `title`, `description` (Blocks), `eventDate`, `isFeatured`, `postUrl`, `gallery_items[]` |
+| **Contact** | Single Type | `phone`, `phoneLabel`, `email`, `linkedinUrl`, `githubUrl` |
 | **Gallery** | Collection | `imageAsset`, `categoryTag` (4 enum values) |
 
 **Featured Hybrid Engine:** `buildFeaturedList` checks `FeaturedCurations` for manual overrides first (max 5 explicit IDs). If empty, falls back to the 5 most-recent items with `isFeatured: true` aggregated across Blogs, Projects, and Engagements.
@@ -405,7 +394,40 @@ cd profile && npm test
 
 See `DEPLOYMENT.md` for the full step-by-step guide including env vars, webhook wiring, and troubleshooting.
 
-**Note on Render free tier:** The Strapi admin Vite bundle OOMs on 512 MB RAM. `cms/dist/` is pre-built locally and committed — Render's build command is `npm install` only (no webpack/Vite step).
+**Note on Render free tier:** See [CMS Schema Changes](#cms-schema-changes) below — `cms/dist/` must be rebuilt locally before every push that touches the CMS.
+
+---
+
+## CMS Schema Changes
+
+### Why `cms/dist/` is committed to the repo
+
+Render's free tier instances have **512 MB RAM**. The Strapi admin panel build (Vite + React) consumes ~600–700 MB at peak — it consistently OOMs and crashes mid-build on the free tier. To work around this, the admin panel is **pre-built locally** and the compiled output in `cms/dist/` is committed to the repository. Render's build command is set to `npm install` only — it never runs `strapi build`.
+
+This means any change to CMS source files — schemas, controllers, services, routes, or sync logic — **will not take effect on Render until `cms/dist/` is rebuilt locally and pushed**.
+
+### Workflow — every time CMS code or schemas change
+
+```bash
+# 1. Make your schema or source changes in cms/src/
+
+# 2. If you added a new content type, regenerate TypeScript types first
+cd cms && npx strapi ts:generate-types
+
+# 3. Rebuild the admin panel
+cd cms && npm run build
+
+# 4. Stage the dist output (force-add since dist/ is normally gitignored)
+git add -f cms/dist/
+git add cms/types/generated/contentTypes.d.ts   # if types were regenerated
+
+# 5. Commit and push — Render redeploys from the committed dist
+git add cms/src/
+git commit -m "your message"
+git push
+```
+
+> **Skipping the build = schema changes that never reach production.** The Strapi admin UI and API will continue to use the old schema until the compiled dist is updated.
 
 ---
 
