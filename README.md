@@ -1,81 +1,22 @@
 # Akash Borkar — Lead Technical Consultant Portfolio
 
-A production-grade personal branding and thought-leadership platform built as a decoupled JAMstack. The Next.js frontend is fully statically generated and consumes structured content from a Strapi v5 headless CMS, with on-demand cache revalidation so the site updates instantly when content is published — no redeploy required.
+A production-grade personal branding platform built as a decoupled JAMstack. The Next.js frontend is fully statically generated and consumes structured content from a Strapi v5 headless CMS, with on-demand cache revalidation so the site updates instantly when content is published — no redeploy required.
 
-**🌐 Live:** https://akashdborkar.vercel.app
-
----
-
-## Table of Contents
-
-- [Live Architecture](#live-architecture)
-- [Tech Stack](#tech-stack)
-- [Project Structure](#project-structure)
-- [Pages & Routes](#pages--routes)
-- [Application Flow](#application-flow)
-- [CMS Content Model](#cms-content-model)
-- [Getting Started](#getting-started)
-  - [Prerequisites](#prerequisites)
-  - [CMS Setup (Strapi)](#cms-setup-strapi)
-  - [Frontend Setup (Next.js)](#frontend-setup-nextjs)
-- [Environment Variables](#environment-variables)
-- [Available Scripts](#available-scripts)
-- [Testing](#testing)
-- [Deployment](#deployment)
-- [Key Design Decisions](#key-design-decisions)
-
----
-
-## Live Architecture
-
-```
-Browser
-  │
-  ▼
-Vercel CDN (akashdborkar.vercel.app) ──── serves pre-rendered HTML (SSG)
-  │
-  ▼
-Next.js 16 (App Router)
-  │  ├── Static pages: /, /about, /contact, /sitemap.xml, /robots.txt
-  │  ├── SSG dynamic: /blog/[slug], /case-studies/[slug]
-  │  ├── API routes:  /api/revalidate       (Strapi publish webhook)
-  │  │               /api/cron/sync-linkedin (Vercel Cron — triggers Apify)
-  │  │               /api/webhooks/apify-linkedin (Apify run callback)
-  │
-  ▼
-Strapi v5 (strapi-cms-2usx.onrender.com — Render Free)
-  │  ├── On publish → fires webhook → POST /api/revalidate
-  │  │                                   └── revalidateTag() clears CDN cache
-  │  └── POST /api/sync-linkedin ← receives LinkedIn data from webhook handler
-  │
-  ▼
-PostgreSQL via Neon (production) / SQLite (development)
-
-Weekly LinkedIn Sync (Vercel Cron — Sunday 2am UTC)
-  Vercel → /api/cron/sync-linkedin
-         → Apify actor (async scrape)
-         → /api/webhooks/apify-linkedin
-         → Strapi sync engine
-         → /api/revalidate (cache bust)
-```
+**Live:** https://akashdborkar.vercel.app
 
 ---
 
 ## Tech Stack
 
-| Layer | Technology | Version |
-|---|---|---|
-| **Frontend framework** | Next.js (App Router, RSC) | 16.2.6 |
-| **UI library** | React | 19.2.4 |
-| **Styling** | Tailwind CSS v4 + shadcn/ui | 4.3.0 |
-| **Theme** | next-themes (dark-first) | 0.4.6 |
-| **CMS** | Strapi v5 | 5.x |
-| **Email** | Resend API via Server Action | — |
-| **Analytics** | GA4 via `@next/third-parties` | — |
-| **Testing** | Vitest + React Testing Library | 3.2.4 |
-| **Deployment** | Vercel (frontend) | — |
-| **CMS hosting** | Render Free + Neon PostgreSQL | — |
-| **Media storage** | Cloudinary | — |
+| Layer | Technology |
+|---|---|
+| Frontend | Next.js 16.2.6 (App Router, RSC) + React 19 |
+| Styling | Tailwind CSS v4 + shadcn/ui v4 |
+| CMS | Strapi v5 |
+| Email | Resend API via Server Action |
+| Analytics | GA4 via `@next/third-parties` |
+| Testing | Vitest v3 + React Testing Library |
+| Deployment | Vercel (frontend) · Render Free + Neon PostgreSQL (CMS) · Cloudinary (media) |
 
 ---
 
@@ -84,44 +25,33 @@ Weekly LinkedIn Sync (Vercel Cron — Sunday 2am UTC)
 ```
 profile/                          ← Next.js frontend
 ├── app/
-│   ├── layout.tsx                # Root layout: ThemeProvider, GA4, OG metadata
 │   ├── page.tsx                  # SPA home — all sections, Promise.allSettled
 │   ├── about/page.tsx
 │   ├── contact/page.tsx
 │   ├── blog/[slug]/page.tsx      # SSG + external redirect logic
 │   ├── case-studies/[slug]/page.tsx
-│   ├── api/revalidate/route.ts   # Webhook endpoint
-│   ├── error.tsx                 # Global error boundary
-│   ├── not-found.tsx             # Custom 404
-│   ├── sitemap.ts
-│   └── robots.ts
+│   └── api/
+│       ├── revalidate/route.ts   # Strapi publish webhook
+│       ├── cron/sync-linkedin/   # Vercel Cron — triggers Apify
+│       └── webhooks/apify-linkedin/ # Apify run callback
 ├── components/
 │   ├── blocks/                   # Dynamic Zone renderers (blog content)
 │   ├── layout/                   # Navbar, Footer, SectionWrapper
 │   ├── sections/                 # Page-level sections
 │   └── ui/                       # Reusable atoms (shadcn + custom)
-├── lib/
-│   ├── api.ts                    # All Strapi fetch helpers with cache tags
-│   ├── apify.ts                  # Apify API client + LinkedIn output transformer
-│   ├── strapi.ts                 # Base fetch client
-│   ├── types.ts                  # TypeScript interfaces (Strapi v5 flat shape)
-│   ├── env.ts                    # Server-only env accessors
-│   ├── actions/sendContactEmail.ts
-│   └── utils/
-│       ├── analytics.ts          # GA4 event helpers
-│       ├── buildFeaturedList.ts  # Featured hybrid engine
-│       ├── filterExpiredCertifications.ts
-│       ├── groupSkillsByCategory.ts
-│       └── richTextHelpers.ts
+└── lib/
+    ├── api.ts                    # All Strapi fetch helpers with cache tags
+    ├── apify.ts                  # Apify API client + LinkedIn transformer
+    ├── types.ts                  # TypeScript interfaces (Strapi v5 flat shape)
+    ├── env.ts                    # Server-only env accessors
+    └── utils/                    # Analytics, featured engine, filters, rich text
 
 cms/                              ← Strapi v5 backend
 ├── src/
-│   ├── api/
-│   │   ├── sync-linkedin/        # POST /api/sync-linkedin (policy + controller)
-│   │   └── ...                   # 8 content type schemas
+│   ├── api/                      # 9 content types + sync-linkedin endpoint
 │   ├── components/               # Shared + Dynamic Zone components
-│   └── sync/                     # LinkedIn sync engine (strapi-client, media-processor, sync-engine.service)
-└── config/                       # CORS, middleware, server config
+│   └── sync/                     # LinkedIn sync engine
+└── config/
 ```
 
 ---
@@ -130,132 +60,12 @@ cms/                              ← Strapi v5 backend
 
 | Route | Type | Description |
 |---|---|---|
-| `/` | Static | SPA home — Hero, About preview, Skills, Featured, Certifications, Engagements |
-| `/about` | Static | Full professional narrative + CV download + social links |
-| `/contact` | Static | Contact details (phone, email, LinkedIn, GitHub — CMS-driven) |
+| `/` | Static | SPA home — Hero, About, Skills, Featured, Certifications, Engagements |
+| `/about` | Static | Full professional narrative + CV download |
+| `/contact` | Static | Contact details — CMS-driven |
 | `/blog/[slug]` | SSG | Internal blog with Dynamic Zone blocks; external blogs server-redirect |
 | `/case-studies/[slug]` | SSG | Project deep-dive with challenge/solution + skills sidebar |
 | `/api/revalidate` | Dynamic | Strapi webhook receiver — clears Next.js cache tags on publish |
-| `/sitemap.xml` | Static | Auto-generated; internal blogs + case studies |
-| `/robots.txt` | Static | Allows all, disallows `/api/` |
-
----
-
-## Application Flow
-
-### 1. Page Render (SSG)
-
-```
-Build time:
-  generateStaticParams() → fetches all slugs from Strapi
-  → Next.js pre-renders each page as static HTML
-  → Deployed to Vercel CDN edge
-
-Runtime (cache hit):
-  User visits page → CDN returns cached HTML instantly
-
-Runtime (cache miss / first visit to new content):
-  CDN miss → Next.js renders → fetches from Strapi with cache tags
-  → Response cached at CDN + tagged for future invalidation
-```
-
-### 2. Content Update Flow (On-Demand Revalidation)
-
-```
-Editor publishes content in Strapi admin
-  → Strapi fires webhook: POST /api/revalidate
-     Headers: Authorization: Bearer <REVALIDATION_SECRET_TOKEN>
-     Body:    { "model": "blog", "slug": "my-post" }
-  → Route handler validates token
-  → Calls revalidateTag("blogs") + revalidateTag("my-post")
-  → Next.js purges matching CDN cache entries
-  → Next visitor triggers a fresh fetch from Strapi
-  → Updated content live within seconds — no redeploy
-```
-
-### 3. Blog Dynamic Zone
-
-Each internal blog post is built from a sequence of typed content blocks:
-
-```
-contentBlocks[]
-  ├── content.hero-block   → full-width image + heading
-  ├── content.text-block   → Strapi Blocks rich text → RichTextRenderer
-  ├── content.code-block   → syntax-highlighted <pre> + CopyButton
-  └── content.callout-box  → Info / Warning / Success callout
-```
-
-Each block is individually wrapped in a `BlockErrorBoundary` — a single broken block cannot crash the page.
-
-### 4. CMS-Down Resilience
-
-The home page fetches all six sections in parallel via `Promise.allSettled`. Any section whose fetch fails independently renders a `<SectionUnavailable>` fallback message — the rest of the page is unaffected.
-
-### 5. LinkedIn Data Sync (Weekly Cron)
-
-Certifications and featured activities are automatically synced from LinkedIn via an async webhook pipeline. The Vercel function must return within 10 seconds (Hobby plan limit), so the Apify scrape is fully decoupled.
-
-```
-Vercel Cron (Sunday 2am UTC)
-  └─ GET /api/cron/sync-linkedin
-       ├─ Validates CRON_SECRET (Vercel auto-injects on cron requests)
-       ├─ Triggers Apify actor run — async, returns in ~1s
-       │   Actor:   sovereigntaylor~linkedin-profile-scraper (pay-per-usage, $0.01/run)
-       │   Input:   { profileUrls: [LINKEDIN_PROFILE_URL], scrapeType: "profiles" }
-       │   Webhook: /api/webhooks/apify-linkedin?secret=APIFY_WEBHOOK_SECRET
-       └─ Returns { triggered: true, runId } — function exits
-
-Apify actor (1–3 min, free Apify compute)
-  └─ Scrapes public LinkedIn profile (certifications, experience, skills)
-  └─ On SUCCEEDED → POST /api/webhooks/apify-linkedin?secret=...
-
-Webhook handler (/api/webhooks/apify-linkedin)
-  └─ Validates APIFY_WEBHOOK_SECRET
-  └─ Fetches dataset from Apify API
-  └─ Transforms output → LinkedInScraperPayload { certifications[], featuredPosts[] }
-  └─ POST /api/sync-linkedin on Strapi (X-Sync-Token header)
-
-Strapi sync engine (cms/src/sync/sync-engine.service.ts)
-  └─ Deduplicates by linkedinCertId / linkedinPostId
-  └─ Creates new certifications + engagements (skips existing)
-  └─ Uploads badge images to Cloudinary
-  └─ POST /api/revalidate → revalidateTag() busts Next.js CDN cache
-```
-
-#### Known Limitation — LinkedIn Bot Detection
-
-The `sovereigntaylor~linkedin-profile-scraper` actor uses **CheerioCrawler** (plain HTTP, no browser). LinkedIn returns **HTTP 999** (bot detection challenge page) against non-browser requests without residential proxies. The Apify free plan does not cover residential proxies (~$12/GB extra).
-
-**Current behaviour:** The cron fires, Apify reports `status: SUCCEEDED`, but the dataset is empty — LinkedIn blocked the request before returning any data.
-
-**Workaround:** Add certifications manually via the Strapi admin panel at https://strapi-cms-2usx.onrender.com/admin.
-
-#### Future Possibilities
-
-| Approach | Cost | Notes |
-|---|---|---|
-| Residential proxies | ~$12/GB (Apify or BrightData) | Pass proxy group to existing actor — no code changes |
-| Browser-based actor (Playwright) | Free compute only | Bypasses basic bot detection without proxies |
-| LinkedIn Official API | Free | Requires LinkedIn Partner Program approval |
-| Manual CSV import | Free, one-time | Export from LinkedIn Settings → Data Privacy → Get a copy of your data → run a local import script against the Strapi API |
-
----
-
-## CMS Content Model
-
-| Content Type | Kind | Key Fields |
-|---|---|---|
-| **AboutMe** | Single Type | `elevatorPitch`, `professionalNarrative` (Blocks), `resumeFile`, `socialLinks[]` |
-| **FeaturedCurations** | Single Type | `manuallyCuratedList[]` — up to 5 explicit content overrides |
-| **Blog** | Collection | `slug`, `isExternal`, `externalUrl`, `isFeatured`, `contentBlocks[]` (Dynamic Zone) |
-| **Project** | Collection | `slug`, `leadershipRole`, `challenge` (Blocks), `solution` (Blocks), `skills_matrices[]` |
-| **SkillsMatrix** | Collection | `skillName`, `category` (9 enum values), `yearsOfExperience` |
-| **Certification** | Collection | `title`, `issuingBody`, `badgeImage`, `verificationUrl`, `expiryDate` |
-| **EngagementAndActivity** | Collection | `title`, `description` (Blocks), `eventDate`, `isFeatured`, `postUrl`, `gallery_items[]` |
-| **Contact** | Single Type | `phone`, `phoneLabel`, `email`, `linkedinUrl`, `githubUrl` |
-| **Gallery** | Collection | `imageAsset`, `categoryTag` (4 enum values) |
-
-**Featured Hybrid Engine:** `buildFeaturedList` checks `FeaturedCurations` for manual overrides first (max 5 explicit IDs). If empty, falls back to the 5 most-recent items with `isFeatured: true` aggregated across Blogs, Projects, and Engagements.
 
 ---
 
@@ -276,9 +86,9 @@ npm run develop
 ```
 
 1. Register your admin account on first launch
-2. Go to **Settings → API Tokens** → create a read-only token named `nextjs-read`
-3. Go to **Settings → Roles → Public** → enable `find` / `findOne` on all content types
-4. Go to **Settings → Webhooks** → create a webhook:
+2. **Settings → API Tokens** → create a read-only token named `nextjs-read`
+3. **Settings → Roles → Public** → enable `find` / `findOne` on all content types
+4. **Settings → Webhooks** → create a webhook:
    - URL: `http://localhost:3000/api/revalidate`
    - Events: all Entry events (Create, Update, Delete, Publish, Unpublish)
    - Header: `Authorization: Bearer <your REVALIDATION_SECRET_TOKEN>`
@@ -288,11 +98,7 @@ npm run develop
 ```bash
 cd profile
 npm install
-
-# Copy example env file and fill in values
-cp .env.local.example .env.local
-# Edit .env.local — see Environment Variables section below
-
+cp .env.local.example .env.local   # fill in values — see Environment Variables below
 npm run dev
 # App: http://localhost:3000
 ```
@@ -301,144 +107,51 @@ npm run dev
 
 ## Environment Variables
 
-Create `profile/.env.local` from the example file:
-
 ```bash
-# Strapi connection
+# profile/.env.local
 STRAPI_API_URL=http://localhost:1337
 STRAPI_API_TOKEN=           # Read-only API token from Strapi admin
-
-# Webhook security (shared secret — Next.js ↔ Strapi)
 REVALIDATION_SECRET_TOKEN=  # openssl rand -base64 32
-
-# Email (Resend)
 RESEND_API_KEY=             # From resend.com dashboard
-
-# Analytics (optional in dev)
 NEXT_PUBLIC_GA_MEASUREMENT_ID=G-XXXXXXXXXX
-
-# Deployment (used in sitemap + OG metadata)
 NEXT_PUBLIC_SITE_URL=https://yourdomain.com
 NEXT_PUBLIC_STRAPI_HOST=    # Strapi hostname for next/image domain allowlist
 
 # LinkedIn sync (Vercel only)
-APIFY_TOKEN=                # Apify API token — Settings → Integrations → API tokens
+APIFY_TOKEN=
 APIFY_ACTOR_ID=sovereigntaylor~linkedin-profile-scraper
 LINKEDIN_PROFILE_URL=https://www.linkedin.com/in/yourprofile/
-APIFY_WEBHOOK_SECRET=       # openssl rand -base64 32 — shared with Apify webhook URL
-
-# LinkedIn sync handshake (Vercel → Strapi)
+APIFY_WEBHOOK_SECRET=       # openssl rand -base64 32
 RENDER_SYNC_TOKEN=          # openssl rand -base64 32 — must match Render env var
 ```
 
-**Strapi (Render) also needs these env vars for the sync engine:**
+Strapi (Render) also needs: `RENDER_SYNC_TOKEN`, `STRAPI_SYNC_API_TOKEN`, `STRAPI_API_URL`, `NEXT_REVALIDATION_URL`, `REVALIDATION_SECRET_TOKEN`.
 
-| Var | Description |
-|---|---|
-| `RENDER_SYNC_TOKEN` | Same value as on Vercel — validates incoming sync requests |
-| `STRAPI_SYNC_API_TOKEN` | Full-access Strapi API token for sync engine self-calls |
-| `STRAPI_API_URL` | Self-referential base URL (`http://localhost:1337` in prod on Render) |
-| `NEXT_REVALIDATION_URL` | Frontend URL — e.g. `https://akashdborkar.vercel.app` |
-| `REVALIDATION_SECRET_TOKEN` | Same value as on Vercel |
-
-> **Security note:** `STRAPI_API_TOKEN`, `REVALIDATION_SECRET_TOKEN`, `RESEND_API_KEY`, `APIFY_TOKEN`, and `RENDER_SYNC_TOKEN` are server-only. `lib/env.ts` throws at module load if any of these are accessed client-side.
+> `STRAPI_API_TOKEN`, `REVALIDATION_SECRET_TOKEN`, `RESEND_API_KEY`, and `RENDER_SYNC_TOKEN` are server-only. `lib/env.ts` throws at module load if accessed client-side.
 
 ---
 
-## Available Scripts
+## CMS Schema Changes
 
-All commands run from the `profile/` directory.
+Render's free tier (512 MB RAM) OOMs during `strapi build`, so `cms/dist/` is pre-built locally and committed. Render's build command is `npm install` only.
 
-| Command | Description |
-|---|---|
-| `npm run dev` | Start dev server at `http://localhost:3000` |
-| `npm run build` | Production build |
-| `npm run start` | Serve production build |
-| `npm run lint` | ESLint |
-| `npm run type-check` | TypeScript check (`tsc --noEmit`) |
-| `npm test` | Run full Vitest test suite |
-| `npm run test:watch` | Vitest in watch mode |
+**Every commit that touches `cms/src/` or any `schema.json` must include a rebuilt `cms/dist/`:**
+
+```bash
+cd cms && npx strapi ts:generate-types  # only if content types changed
+cd cms && npm run build
+git add -f cms/dist/
+git add cms/types/generated/contentTypes.d.ts   # if types were regenerated
+git add cms/src/
+git commit -m "your message"
+```
+
+Skipping the build = schema changes that never reach production.
 
 ---
 
 ## Testing
 
 ```bash
-cd profile && npm test
+cd profile && npm test   # Vitest — 45 tests across 9 suites
 ```
-
-**45 tests across 9 suites:**
-
-| Suite | Tests | Type |
-|---|---|---|
-| `filterExpiredCertifications` | 5 | Unit |
-| `groupSkillsByCategory` | 5 | Unit |
-| `richTextHelpers` | 5 | Unit |
-| `buildFeaturedList` | 5 | Unit |
-| `fetchStrapiData` | 7 | Unit (retry + backoff) |
-| `sendContactEmail` | 6 | Unit (Server Action) |
-| `/api/revalidate` route | 6 | Integration |
-| `SkillBadge` component | 3 | Component (RTL + jsdom) |
-| `CertificationsSection` component | 3 | Component (RTL + jsdom) |
-
----
-
-## Deployment
-
-### Live Deployment
-
-| Service | URL | Platform |
-|---|---|---|
-| **Frontend** | https://akashdborkar.vercel.app | Vercel |
-| **CMS** | https://strapi-cms-2usx.onrender.com | Render Free |
-
-See `DEPLOYMENT.md` for the full step-by-step guide including env vars, webhook wiring, and troubleshooting.
-
-**Note on Render free tier:** See [CMS Schema Changes](#cms-schema-changes) below — `cms/dist/` must be rebuilt locally before every push that touches the CMS.
-
----
-
-## CMS Schema Changes
-
-### Why `cms/dist/` is committed to the repo
-
-Render's free tier instances have **512 MB RAM**. The Strapi admin panel build (Vite + React) consumes ~600–700 MB at peak — it consistently OOMs and crashes mid-build on the free tier. To work around this, the admin panel is **pre-built locally** and the compiled output in `cms/dist/` is committed to the repository. Render's build command is set to `npm install` only — it never runs `strapi build`.
-
-This means any change to CMS source files — schemas, controllers, services, routes, or sync logic — **will not take effect on Render until `cms/dist/` is rebuilt locally and pushed**.
-
-### Workflow — every time CMS code or schemas change
-
-```bash
-# 1. Make your schema or source changes in cms/src/
-
-# 2. If you added a new content type, regenerate TypeScript types first
-cd cms && npx strapi ts:generate-types
-
-# 3. Rebuild the admin panel
-cd cms && npm run build
-
-# 4. Stage the dist output (force-add since dist/ is normally gitignored)
-git add -f cms/dist/
-git add cms/types/generated/contentTypes.d.ts   # if types were regenerated
-
-# 5. Commit and push — Render redeploys from the committed dist
-git add cms/src/
-git commit -m "your message"
-git push
-```
-
-> **Skipping the build = schema changes that never reach production.** The Strapi admin UI and API will continue to use the old schema until the compiled dist is updated.
-
----
-
-## Key Design Decisions
-
-**Strapi v5 flat shape** — Strapi v5 removes the `attributes` wrapper from API responses. All TypeScript interfaces in `lib/types.ts` use the flat shape directly (e.g., `blog.slug` not `blog.attributes.slug`).
-
-**Dynamic Zone populate** — Strapi v5 requires fragment syntax for Dynamic Zone populate: `populate[contentBlocks][on][content.text-block][populate]=*`. A wildcard `populate=*` does not traverse into Dynamic Zones.
-
-**Media field populate** — Strapi v5 rejects wildcard populate on media fields inside Dynamic Zones. Use explicit field selection: `populate[image][fields][0]=url&...`.
-
-**`revalidateTag` in Next.js 16** — Next.js 16 changed `revalidateTag` to require a second `profile` argument. The revalidation route passes `'default'` as the profile.
-
-**Server-only secrets** — `lib/env.ts` throws at module load if imported client-side, preventing accidental secret leakage into the client bundle.

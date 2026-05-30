@@ -80,7 +80,6 @@ export interface CuratedItem {
 export interface AboutMe extends StrapiEntity {
   elevatorPitch: string
   professionalNarrative: StrapiBlock[]
-  resumeFile: StrapiMedia | null
   profileImage: StrapiMedia | null
   socialLinks: SocialLink[]
 }
@@ -191,7 +190,7 @@ export interface Certification extends StrapiEntity {
   title: string
   issuingBody: string
   badgeImage: StrapiMedia | null
-  verificationUrl: string
+  verificationUrl?: string
   expiryDate?: string
 }
 

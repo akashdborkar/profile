@@ -4,13 +4,13 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Project Overview
 
-A personal branding and thought-leadership platform for a Lead Technical Consultant (Akash Borkar). Decoupled JAMstack: **Next.js 16** (App Router) frontend in `profile/` + **Strapi v5** headless CMS in `cms/`.
+A personal branding and thought-leadership platform for a Lead Technical Consultant (Akash Borkar). Decoupled JAMstack: **Next.js 16.2.6** (App Router) frontend in `profile/` + **Strapi v5** headless CMS in `cms/`.
+
+Stack: Next.js 16.2.6 · React 19 · Tailwind CSS v4 · shadcn/ui v4 · Strapi v5.46.0 · Vitest v3
 
 **Live URLs:**
-- Frontend: **https://akashdborkar.vercel.app** (Vercel)
-- CMS Admin: **https://strapi-cms-2usx.onrender.com/admin** (Render Free)
-
-**Current status:** Fully deployed. Remaining work: Lighthouse audits.
+- Frontend: https://akashdborkar.vercel.app (Vercel)
+- CMS Admin: https://strapi-cms-2usx.onrender.com/admin (Render Free)
 
 ## Commands
 
@@ -18,16 +18,11 @@ A personal branding and thought-leadership platform for a Lead Technical Consult
 ```bash
 npm run dev          # Start dev server at http://localhost:3000
 npm run build        # Production build
-npm run start        # Serve production build
 npm run lint         # ESLint
 npm run type-check   # tsc --noEmit
-npm test             # Vitest run (45 tests)
+npm test             # Vitest run
 npm run test:watch   # Vitest watch mode
-```
-
-Run a single test file:
-```bash
-npx vitest run lib/utils/__tests__/filterExpiredCertifications.test.ts
+npx vitest run lib/utils/__tests__/filterExpiredCertifications.test.ts  # single file
 ```
 
 **CMS (`cms/`):**
@@ -38,64 +33,48 @@ npm run build        # Build Strapi admin panel
 
 ## Architecture
 
-### Version Reality Check
+### Strapi v5 API
 
-The actual versions differ from the original spec — always trust these:
-
-| Layer | Actual Version | Spec Said |
-|---|---|---|
-| Next.js | **16.2.6** | 15 |
-| Tailwind CSS | **v4** | v3 |
-| shadcn/ui | **v4** | — |
-| Strapi | **v5.46.0** | v4 |
-| React | **19** | — |
-| Test runner | **Vitest v3** | Jest |
-
-### Strapi v5 API — Critical Differences from v4
-
-Strapi v5 uses a **flat response format** — no `attributes` wrapper. Every type extends `StrapiEntity` directly:
-
+Flat response format — no `attributes` wrapper:
 ```ts
-// v5 (correct)
 res.data.title        // ✓
-// v4 style (WRONG)
-res.data.attributes.title  // ✗
+res.data.attributes.title  // ✗ (v4 style — wrong)
 ```
 
-**Dynamic Zone populate** uses fragment syntax — `populate=*` does NOT work for dynamic zones:
+**Dynamic Zone populate** requires fragment syntax — `populate=*` does NOT work:
 ```
 populate[contentBlocks][on][content.hero-block][populate][image][fields][0]=url
 ```
 
-**Media fields** must use explicit `[fields][n]=fieldName` — `[image]=*` is rejected in v5.
+**Media fields** must use explicit `[fields][n]=fieldName` — `[image]=*` is rejected.
 
-`revalidateTag` in Next.js 16 requires a second profile argument: `revalidateTag(tag, 'default')`.
+`revalidateTag` in Next.js 16 requires a second argument: `revalidateTag(tag, 'default')`.
 
 ### Tailwind CSS v4
 
-Configuration is CSS-first, not `tailwind.config.ts`:
-- Use `@import "tailwindcss"` (not `@tailwind base/components/utilities`)
+CSS-first config — no `tailwind.config.ts`:
+- `@import "tailwindcss"` (not `@tailwind base/components/utilities`)
 - Dark mode via `@custom-variant dark` in `globals.css`
-- Content scanning via explicit `@source "../app"` and `@source "../components"` directives
+- Content scanning via `@source "../app"` and `@source "../components"` directives
 
 ### shadcn v4
 
-`Button` has **no `asChild` prop**. For link-styled buttons, use `buttonVariants` helper directly:
+`Button` has no `asChild` prop. Use `buttonVariants` for link-styled buttons:
 ```tsx
 <Link href="/" className={buttonVariants({ variant: 'outline' })}>Go Home</Link>
 ```
 
 ### Caching Model
 
-SSG at build time. On-demand revalidation via `app/api/revalidate/route.ts`: Strapi fires a webhook → `revalidateTag(modelName, 'default')`. Every `fetch` in `lib/api.ts` passes `next: { tags: [...] }` matching `MODEL_TO_TAG_MAP` in the route handler.
+SSG at build time. On-demand revalidation: Strapi webhook → `app/api/revalidate/route.ts` → `revalidateTag(modelName, 'default')`. Every `fetch` in `lib/api.ts` passes `next: { tags: [...] }` matching `MODEL_TO_TAG_MAP`.
 
 ### CMS-Down Resilience
 
 `app/page.tsx` uses `Promise.allSettled` for all section fetches. Sections receive `T | null` and render `<SectionUnavailable sectionName="..." />` on null.
 
-### Featured Content Hybrid Engine (`lib/utils/buildFeaturedList.ts`)
+### Featured Content Hybrid Engine
 
-Checks `FeaturedCurations` single type first (max 5 explicit IDs). Falls back to the 5 most-recent `isFeatured=true` items aggregated across Blogs, Projects, and Engagements.
+`lib/utils/buildFeaturedList.ts` — checks `FeaturedCurations` single type first (max 5 explicit IDs), falls back to 5 most-recent `isFeatured=true` items across Blogs, Projects, and Engagements.
 
 ### Server-Only Secrets
 
@@ -103,19 +82,18 @@ Checks `FeaturedCurations` single type first (max 5 explicit IDs). Falls back to
 
 ### External Blog Routing
 
-Blogs with `isExternal: true` use server-side `redirect(externalUrl)` inside `app/blog/[slug]/page.tsx` — no client-side redirect.
+Blogs with `isExternal: true` use server-side `redirect(externalUrl)` in `app/blog/[slug]/page.tsx`.
 
 ### Block Error Isolation
 
-Each block in `DynamicZoneRenderer` is wrapped in `BlockErrorBoundary` (class component) so one malformed block doesn't crash the page.
+Each block in `DynamicZoneRenderer` is wrapped in `BlockErrorBoundary` so one malformed block doesn't crash the page.
 
 ## Testing
 
-Vitest v3 — **not** Jest. Config in `profile/vitest.config.ts`:
-
-- `lib/` tests run under `node` environment
-- `components/**/__tests__/*.test.tsx` run under `jsdom` environment (via `environmentMatchGlobs`)
-- JSX transform uses esbuild (`@vitejs/plugin-react` removed — was incompatible with Vite 7)
+Vitest v3 — not Jest. Config in `profile/vitest.config.ts`:
+- `lib/` tests: `node` environment
+- `components/**/__tests__/*.test.tsx`: `jsdom` environment (via `environmentMatchGlobs`)
+- JSX transform uses esbuild (`@vitejs/plugin-react` removed — incompatible with Vite 7)
 
 ## Key Files
 
@@ -129,7 +107,7 @@ profile/
     blog/[slug]/page.tsx                  # generateStaticParams + server-side redirect for external
     case-studies/[slug]/page.tsx
   lib/
-    apify.ts    # Apify API client (triggerLinkedInActorRun, fetchDatasetItems) + LinkedIn transformer
+    apify.ts    # Apify API client + LinkedIn transformer (transformLinkedInOutput)
     api.ts      # All fetch helpers — BLOG_BLOCKS_POPULATE uses fragment syntax
     strapi.ts   # Base fetch client
     types.ts    # All TypeScript interfaces (Strapi v5 flat)
@@ -155,7 +133,7 @@ cms/
     sync/
       sync-engine.service.ts        # Core sync logic — dedup, upsert, revalidate
       strapi-client.ts              # Self-referential Strapi REST calls (uses STRAPI_SYNC_API_TOKEN)
-      media-processor.ts            # Badge image upload helper (Cloudinary removed for post media)
+      media-processor.ts            # Badge image upload helper
     components/
       shared/       # social-link, curated-item
       content/      # hero-block, text-block, code-block, callout-box (blog Dynamic Zone)
@@ -164,7 +142,7 @@ cms/
 ## Environment Variables
 
 ```bash
-# profile/.env.local — Vercel environment
+# profile/.env.local
 STRAPI_API_URL=http://localhost:1337
 STRAPI_API_TOKEN=...                    # Read-only Strapi token
 REVALIDATION_SECRET_TOKEN=...           # openssl rand -base64 32
@@ -173,19 +151,19 @@ NEXT_PUBLIC_STRAPI_HOST=...             # Strapi hostname for next/image domain 
 NEXT_PUBLIC_SITE_URL=https://akashborkar.com
 
 # LinkedIn sync — Vercel only
-CRON_SECRET=...                         # Auto-injected by Vercel; also set locally for manual cron tests
-APIFY_TOKEN=...                         # Apify API token (Settings → Integrations → API tokens)
+CRON_SECRET=...                         # Auto-injected by Vercel
+APIFY_TOKEN=...
 APIFY_ACTOR_ID=sovereigntaylor~linkedin-profile-scraper
 LINKEDIN_PROFILE_URL=https://www.linkedin.com/in/akashdborkar/
-APIFY_WEBHOOK_SECRET=...                # openssl rand -base64 32 — validates Apify callbacks
-RENDER_SYNC_TOKEN=...                   # openssl rand -base64 32 — Vercel→Strapi handshake
+APIFY_WEBHOOK_SECRET=...                # openssl rand -base64 32
+RENDER_SYNC_TOKEN=...                   # openssl rand -base64 32
 ```
 
 ```bash
-# Render (Strapi) environment — LinkedIn sync engine
+# Render (Strapi)
 RENDER_SYNC_TOKEN=...                   # Must match Vercel value
-STRAPI_SYNC_API_TOKEN=...               # Full-access Strapi API token for sync engine self-calls
-STRAPI_API_URL=http://localhost:1337    # Self-referential on Render
+STRAPI_SYNC_API_TOKEN=...              # Full-access token for sync engine self-calls
+STRAPI_API_URL=http://localhost:1337
 NEXT_REVALIDATION_URL=https://akashdborkar.vercel.app
 REVALIDATION_SECRET_TOKEN=...          # Must match Vercel value
 ```
@@ -198,16 +176,11 @@ REVALIDATION_SECRET_TOKEN=...          # Must match Vercel value
 | CMS | https://strapi-cms-2usx.onrender.com | Render Free + Neon PostgreSQL |
 | Media | Cloudinary (free tier) | — |
 
-**CMS admin:** `admin@profile.local` — change password at `/admin` on first use.
-
-**IMPORTANT — CMS dist build rule:** Render serves `cms/dist/` directly (pre-built locally) because the Strapi admin Vite build OOMs on Render's 512 MB free tier. Render's build command is `npm install` only — it never runs `strapi build`. This means **every commit that changes anything in `cms/src/` or `cms/src/api/*/schema.json` must also include a rebuilt `cms/dist/`**, otherwise the schema changes will never reach production.
+**IMPORTANT — CMS dist build rule:** Render serves `cms/dist/` directly (pre-built locally) because the Strapi admin Vite build OOMs on Render's 512 MB free tier. Render's build command is `npm install` only. **Every commit touching `cms/src/` or any `schema.json` must include a rebuilt `cms/dist/`.**
 
 After any CMS change:
 ```bash
-# If a new content type was added, regenerate TS types first
-cd cms && npx strapi ts:generate-types
-
-# Always rebuild and force-add dist
+cd cms && npx strapi ts:generate-types  # only if content types changed
 cd cms && npm run build
 git add -f cms/dist/
 git add cms/types/generated/contentTypes.d.ts   # if types were regenerated
@@ -215,60 +188,10 @@ git add cms/types/generated/contentTypes.d.ts   # if types were regenerated
 
 ## LinkedIn Data Sync
 
-### Architecture (Async Webhook — required by Vercel Hobby 10s limit)
+Runs via Vercel Cron (Sunday 2am UTC) → Apify actor → webhook → Strapi sync engine.
 
-```
-Vercel Cron (Sunday 2am UTC) — vercel.json: { "path": "/api/cron/sync-linkedin", "schedule": "0 2 * * 0" }
-  └─ GET /api/cron/sync-linkedin
-       ├─ Auth: Authorization: Bearer $CRON_SECRET  (Vercel auto-injects on cron requests)
-       ├─ Calls triggerLinkedInActorRun() in lib/apify.ts
-       │    POST https://api.apify.com/v2/acts/sovereigntaylor~linkedin-profile-scraper/runs
-       │    Body: { profileUrls: [LINKEDIN_PROFILE_URL], scrapeType: "profiles", maxResults: 1 }
-       │    Query: webhooks=<base64 JSON> → points to /api/webhooks/apify-linkedin
-       └─ Returns { triggered: true, runId } in ~1s — function exits immediately
+**Currently broken:** LinkedIn returns HTTP 999 to Apify's shared IP pool (bot detection). Cron fires, Apify run succeeds, but dataset is empty — 0 items synced.
 
-Apify actor runs (1–3 min)
-  └─ Scrapes https://www.linkedin.com/in/akashdborkar/
-  └─ On SUCCEEDED → POST /api/webhooks/apify-linkedin?secret=APIFY_WEBHOOK_SECRET
+**Workaround:** Add certifications manually at https://strapi-cms-2usx.onrender.com/admin.
 
-Webhook handler (profile/app/api/webhooks/apify-linkedin/route.ts)
-  └─ Validates ?secret= against APIFY_WEBHOOK_SECRET
-  └─ Fetches dataset: GET /v2/datasets/{defaultDatasetId}/items?clean=true
-  └─ transformLinkedInOutput(items) → LinkedInScraperPayload { certifications[], featuredPosts[] }
-  └─ POST https://strapi/api/sync-linkedin  { X-Sync-Token: RENDER_SYNC_TOKEN }
-
-Strapi sync endpoint (cms/src/api/sync-linkedin/)
-  └─ verify-sync-token policy checks X-Sync-Token === RENDER_SYNC_TOKEN
-  └─ Controller calls syncLinkedInData(payload) in cms/src/sync/sync-engine.service.ts
-  └─ Per cert: dedup by linkedinCertId → skip existing → upload badge → createCertification
-  └─ Per post: dedup by linkedinPostId → skip existing / update media → createEngagement
-  └─ POST /api/revalidate on Next.js → revalidateTag("certification") + revalidateTag("engagement-and-activity")
-```
-
-### Known Limitation — LinkedIn Bot Detection
-
-`sovereigntaylor~linkedin-profile-scraper` uses **CheerioCrawler** (non-browser HTTP). LinkedIn returns **HTTP 999** against plain HTTP requests from Apify's shared IP pool without residential proxies. The Apify free plan ($5/month compute credit) does not include residential proxies (~$12/GB).
-
-**Current state:** Cron fires → Apify run SUCCEEDED → dataset empty (LinkedIn blocked) → 0 items synced.
-**Workaround:** Add certifications manually via https://strapi-cms-2usx.onrender.com/admin.
-
-### Future Paths
-
-| Option | Cost | Code change needed |
-|---|---|---|
-| Residential proxies | ~$12/GB (Apify/BrightData) | Add `proxyConfiguration` to actor input in `lib/apify.ts` |
-| Playwright-based actor | Free compute only | Swap `APIFY_ACTOR_ID` env var; update transformer |
-| LinkedIn Official API | Free (partner approval required) | Replace Apify layer entirely |
-| Manual CSV import | Free, one-time | Export LinkedIn Settings → Data Privacy → Get a copy → parse `Certifications.csv` and POST to Strapi API |
-
-### Transformer (`lib/apify.ts`)
-
-`transformLinkedInOutput(items)` maps `sovereigntaylor` actor output to `LinkedInScraperPayload`. If switching actors, only this function needs updating — the webhook handler and Strapi sync engine are actor-agnostic.
-
-Field mapping: `cert.name` → `title`, `cert.authority` → `issuingBody`, `cert.licenseNumber` → `linkedinCertId`, `cert.expiryDate` (string `"Jan 2026"`) or `cert.timePeriod` (object `{ endDate: { year, month } }`) → `expiryDate`.
-
-## Next Steps
-
-1. Lighthouse audits (Performance/Accessibility/SEO/Best Practices ≥ 95 on all pages)
-2. Fix LinkedIn scraping — see LinkedIn Data Sync section above
-3. See `todo.md` for full checklist
+If switching Apify actors, only `transformLinkedInOutput()` in `lib/apify.ts` needs updating — the webhook handler and sync engine are actor-agnostic.

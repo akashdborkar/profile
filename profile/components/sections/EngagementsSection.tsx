@@ -19,7 +19,7 @@ export function EngagementsSection({ engagements }: EngagementsSectionProps) {
         Activities
       </p>
       <h2 className="text-3xl font-bold text-foreground mb-8">
-        Speaking &amp; Engagements
+        Engagements & Activities
       </h2>
 
       {sorted.length === 0 ? (

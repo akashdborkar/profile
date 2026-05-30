@@ -28,7 +28,7 @@
         },
         "verificationUrl": {
             "type": "string",
-            "required": true,
+            "required": false,
             "regex": "^https?://.+"
         },
         "expiryDate": {

@@ -10,9 +10,9 @@ interface Props {
 export function HeroBlock({ block, priority = false }: Props) {
   if (!block.image) return null
 
-  const src = block.image.url.startsWith('/')
-    ? `${env.strapiUrl}${block.image.url}`
-    : block.image.url
+  const src = block.image.url.startsWith('http')
+    ? block.image.url
+    : `${env.strapiUrl}${block.image.url}`
 
   return (
     <div className="mb-8">

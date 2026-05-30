@@ -4,7 +4,6 @@ import { Navbar } from '@/components/layout/Navbar'
 import { Footer } from '@/components/layout/Footer'
 import { RichTextRenderer } from '@/components/ui/RichTextRenderer'
 import { SocialLinks } from '@/components/ui/SocialLinks'
-import { env } from '@/lib/env'
 import { fetchAboutMe } from '@/lib/api'
 import { ResumeDownloadLink } from '@/components/ui/ResumeDownloadLink'
 
@@ -30,11 +29,7 @@ export default async function AboutPage() {
     // CMS unavailable
   }
 
-  const cvUrl = aboutMe?.resumeFile
-    ? (aboutMe.resumeFile.url.startsWith('http')
-        ? aboutMe.resumeFile.url
-        : `${env.strapiUrl}${aboutMe.resumeFile.url}`)
-    : null
+  const cvUrl = '/Akash_Borkar_CV.pdf'
 
   return (
     <>

@@ -15,8 +15,8 @@ export function trackExternalBlogClick(blogTitle: string, externalUrl: string) {
   sendEvent('external_blog_click', { blog_title: blogTitle, external_url: externalUrl })
 }
 
-export function trackCertificationVerificationClick(certTitle: string, verificationUrl: string) {
-  sendEvent('certification_verification_click', { cert_title: certTitle, verification_url: verificationUrl })
+export function trackCertificationVerificationClick(certTitle: string, verificationUrl: string | undefined) {
+  sendEvent('certification_verification_click', { cert_title: certTitle, verification_url: verificationUrl ?? '' })
 }
 
 export function trackResumeDownloadClick(resumeUrl: string) {

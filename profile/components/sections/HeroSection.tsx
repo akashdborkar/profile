@@ -21,11 +21,12 @@ export function HeroSection({ aboutMe }: HeroSectionProps) {
     )
   }
 
-  const cvUrl = aboutMe.resumeFile
-    ? `${env.strapiUrl}${aboutMe.resumeFile.url}`
-    : null
+  const cvUrl = '/Akash_Borkar_CV.pdf'
 
-  const profileImageUrl = aboutMe.profileImage?.url ?? null
+  const rawProfileImageUrl = aboutMe.profileImage?.url ?? null
+  const profileImageUrl = rawProfileImageUrl
+    ? (rawProfileImageUrl.startsWith('http') ? rawProfileImageUrl : `${env.strapiUrl}${rawProfileImageUrl}`)
+    : null
 
   return (
     <div className="relative overflow-hidden">
