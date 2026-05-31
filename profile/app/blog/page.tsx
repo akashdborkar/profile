@@ -17,33 +17,50 @@ function BlogCard({ blog }: { blog: Blog }) {
       )
     : null
 
-  return (
-    <Link
-      href={`/blog/${blog.slug}`}
-      className="group block py-6 border-b border-border last:border-0"
-    >
-      <div className="flex items-start justify-between gap-6">
-        <div className="min-w-0 flex-1">
-          <div className="flex items-center gap-2 mb-2">
-            {blog.isExternal && (
-              <span className="text-xs font-semibold uppercase tracking-wider px-2 py-0.5 rounded-full text-sky-400 bg-sky-500/15">
-                External
-              </span>
-            )}
-            {blog.isFeatured && (
-              <span className="text-xs font-semibold uppercase tracking-wider px-2 py-0.5 rounded-full text-violet-400 bg-violet-500/15">
-                Featured
-              </span>
-            )}
-          </div>
-          <h2 className="text-lg font-semibold leading-snug group-hover:text-accent transition-colors">
-            {blog.title}
-          </h2>
+  const isExternalLink = blog.isExternal && !!blog.externalUrl
+  const className = 'group block py-6 border-b border-border last:border-0'
+
+  const content = (
+    <div className="flex items-start justify-between gap-6">
+      <div className="min-w-0 flex-1">
+        <div className="flex items-center gap-2 mb-2">
+          {blog.isExternal && (
+            <span className="text-xs font-semibold uppercase tracking-wider px-2 py-0.5 rounded-full text-sky-400 bg-sky-500/15">
+              External
+            </span>
+          )}
+          {blog.isFeatured && (
+            <span className="text-xs font-semibold uppercase tracking-wider px-2 py-0.5 rounded-full text-violet-400 bg-violet-500/15">
+              Featured
+            </span>
+          )}
         </div>
-        {date && (
-          <span className="shrink-0 text-sm text-muted-foreground pt-0.5">{date}</span>
-        )}
+        <h2 className="text-lg font-semibold leading-snug group-hover:text-accent transition-colors">
+          {blog.title}
+        </h2>
       </div>
+      {date && (
+        <span className="shrink-0 text-sm text-muted-foreground pt-0.5">{date}</span>
+      )}
+    </div>
+  )
+
+  if (isExternalLink) {
+    return (
+      <a
+        href={blog.externalUrl}
+        target="_blank"
+        rel="noopener noreferrer"
+        className={className}
+      >
+        {content}
+      </a>
+    )
+  }
+
+  return (
+    <Link href={`/blog/${blog.slug}`} className={className}>
+      {content}
     </Link>
   )
 }

@@ -13,13 +13,11 @@ function BlogRow({ blog }: { blog: Blog }) {
       )
     : null
 
-  return (
-    <Link
-      href={`/blog/${blog.slug}`}
-      target="_blank"
-      rel="noopener noreferrer"
-      className="group flex items-start justify-between gap-4 py-4 border-b border-border last:border-0 hover:text-accent transition-colors"
-    >
+  const isExternalLink = blog.isExternal && !!blog.externalUrl
+  const className = 'group flex items-start justify-between gap-4 py-4 border-b border-border last:border-0 hover:text-accent transition-colors'
+
+  const content = (
+    <>
       <div className="flex items-center gap-3 min-w-0">
         {blog.isExternal && (
           <span className="shrink-0 text-xs font-semibold uppercase tracking-wider px-2 py-0.5 rounded-full text-sky-400 bg-sky-500/15">
@@ -33,6 +31,20 @@ function BlogRow({ blog }: { blog: Blog }) {
       {date && (
         <span className="shrink-0 text-sm text-muted-foreground">{date}</span>
       )}
+    </>
+  )
+
+  if (isExternalLink) {
+    return (
+      <a href={blog.externalUrl} target="_blank" rel="noopener noreferrer" className={className}>
+        {content}
+      </a>
+    )
+  }
+
+  return (
+    <Link href={`/blog/${blog.slug}`} className={className}>
+      {content}
     </Link>
   )
 }

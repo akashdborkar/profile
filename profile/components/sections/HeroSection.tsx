@@ -16,6 +16,7 @@ export function HeroSection({ aboutMe }: HeroSectionProps) {
   if (!aboutMe) {
     return (
       <div className="min-h-screen flex items-center justify-center">
+        <h1 className="sr-only">Akash Borkar</h1>
         <SectionUnavailable sectionName="Hero" />
       </div>
     )
@@ -25,7 +26,11 @@ export function HeroSection({ aboutMe }: HeroSectionProps) {
 
   const rawProfileImageUrl = aboutMe.profileImage?.url ?? null
   const profileImageUrl = rawProfileImageUrl
-    ? (rawProfileImageUrl.startsWith('http') ? rawProfileImageUrl : `${env.strapiUrl}${rawProfileImageUrl}`)
+    ? (rawProfileImageUrl.startsWith('http')
+        ? (rawProfileImageUrl.includes('res.cloudinary.com')
+            ? rawProfileImageUrl.replace('/upload/', '/upload/f_auto,q_auto,w_640/')
+            : rawProfileImageUrl)
+        : `${env.strapiUrl}${rawProfileImageUrl}`)
     : null
 
   return (
@@ -44,15 +49,20 @@ export function HeroSection({ aboutMe }: HeroSectionProps) {
 
           {/* Left — text content */}
           <div>
-            {/* Pre-heading */}
+            {/* Name — primary h1 for SEO and LCP */}
+            <h1 className="text-4xl md:text-5xl font-bold leading-tight text-foreground mb-2">
+              Akash Borkar
+            </h1>
+
+            {/* Role subtitle */}
             <p className="text-sm uppercase tracking-widest text-muted-foreground mb-4 font-medium">
               Lead Technical Consultant
             </p>
 
             {/* Elevator pitch */}
-            <h3 className="text-2xl md:text-2xl font-bold leading-tight text-foreground mb-6 whitespace-pre-line">
+            <p className="text-xl md:text-2xl font-semibold leading-snug text-foreground mb-6 whitespace-pre-line">
               {aboutMe.elevatorPitch}
-            </h3>
+            </p>
 
             <Separator className="my-8" />
 
