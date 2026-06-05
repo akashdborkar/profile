@@ -102,12 +102,9 @@ profile/
   app/
     page.tsx                              # SPA home — Promise.allSettled over all sections
     api/revalidate/route.ts               # Strapi publish webhook — MODEL_TO_TAG_MAP + revalidateTag
-    api/cron/sync-linkedin/route.ts       # Vercel Cron — triggers Apify actor, returns immediately
-    api/webhooks/apify-linkedin/route.ts  # Apify run callback — fetch dataset → transform → Strapi
     blog/[slug]/page.tsx                  # generateStaticParams + server-side redirect for external
     case-studies/[slug]/page.tsx
   lib/
-    apify.ts    # Apify API client + LinkedIn transformer (transformLinkedInOutput)
     api.ts      # All fetch helpers — BLOG_BLOCKS_POPULATE uses fragment syntax
     strapi.ts   # Base fetch client
     types.ts    # All TypeScript interfaces (Strapi v5 flat)
@@ -127,13 +124,8 @@ profile/
 cms/
   src/
     api/
-      sync-linkedin/                # POST /api/sync-linkedin — verify-sync-token policy + controller
-      # + 9 content types: about-me, blog, project, skills-matrix, certification,
-      #                     engagement-and-activity, gallery, featured-curation, contact
-    sync/
-      sync-engine.service.ts        # Core sync logic — dedup, upsert, revalidate
-      strapi-client.ts              # Self-referential Strapi REST calls (uses STRAPI_SYNC_API_TOKEN)
-      media-processor.ts            # Badge image upload helper
+      # 9 content types: about-me, blog, project, skills-matrix, certification,
+      #                   engagement-and-activity, gallery, featured-curation, contact
     components/
       shared/       # social-link, curated-item
       content/      # hero-block, text-block, code-block, callout-box (blog Dynamic Zone)
@@ -149,20 +141,10 @@ REVALIDATION_SECRET_TOKEN=...           # openssl rand -base64 32
 NEXT_PUBLIC_GA_MEASUREMENT_ID=G-XXXXXXXXXX
 NEXT_PUBLIC_STRAPI_HOST=...             # Strapi hostname for next/image domain allowlist
 NEXT_PUBLIC_SITE_URL=https://akashborkar.com
-
-# LinkedIn sync — Vercel only
-CRON_SECRET=...                         # Auto-injected by Vercel
-APIFY_TOKEN=...
-APIFY_ACTOR_ID=sovereigntaylor~linkedin-profile-scraper
-LINKEDIN_PROFILE_URL=https://www.linkedin.com/in/akashdborkar/
-APIFY_WEBHOOK_SECRET=...                # openssl rand -base64 32
-RENDER_SYNC_TOKEN=...                   # openssl rand -base64 32
 ```
 
 ```bash
 # Render (Strapi)
-RENDER_SYNC_TOKEN=...                   # Must match Vercel value
-STRAPI_SYNC_API_TOKEN=...              # Full-access token for sync engine self-calls
 STRAPI_API_URL=http://localhost:1337
 NEXT_REVALIDATION_URL=https://akashdborkar.vercel.app
 REVALIDATION_SECRET_TOKEN=...          # Must match Vercel value
@@ -186,12 +168,3 @@ git add -f cms/dist/
 git add cms/types/generated/contentTypes.d.ts   # if types were regenerated
 ```
 
-## LinkedIn Data Sync
-
-Runs via Vercel Cron (Sunday 2am UTC) → Apify actor → webhook → Strapi sync engine.
-
-**Currently broken:** LinkedIn returns HTTP 999 to Apify's shared IP pool (bot detection). Cron fires, Apify run succeeds, but dataset is empty — 0 items synced.
-
-**Workaround:** Add certifications manually at https://strapi-cms-2usx.onrender.com/admin.
-
-If switching Apify actors, only `transformLinkedInOutput()` in `lib/apify.ts` needs updating — the webhook handler and sync engine are actor-agnostic.
