@@ -12,6 +12,11 @@
   },
   "pluginOptions": {},
   "attributes": {
+    "designation": {
+      "type": "string",
+      "required": true,
+      "default": "Lead Technical Consultant"
+    },
     "elevatorPitch": {
       "type": "text",
       "required": true

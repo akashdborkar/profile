@@ -5,6 +5,7 @@ import './globals.css'
 import { ThemeProvider } from '@/components/providers/ThemeProvider'
 import { Toaster } from '@/components/ui/sonner'
 import { Analytics } from '@vercel/analytics/next'
+import { fetchAboutMe } from '@/lib/api'
 
 const inter = Inter({
   subsets: ['latin'],
@@ -14,49 +15,62 @@ const inter = Inter({
 
 const SITE_URL = process.env.NEXT_PUBLIC_SITE_URL ?? 'https://akashdborkar.vercel.app'
 
-export const metadata: Metadata = {
-  metadataBase: new URL(SITE_URL),
-  title: {
-    default: 'Akash Borkar | Lead Technical Consultant',
-    template: '%s | Akash Borkar',
-  },
-  description: 'Akash Borkar — Lead Technical Consultant with 9+ years of experience in scalable web architecture, cloud delivery, and engineering leadership.',
-  keywords: [
-    'Akash Borkar',
-    'Lead Technical Consultant',
-    'Technical Consultant',
-    'Software Architect',
-    'Cloud Delivery',
-    'Engineering Leadership',
-    'Akash Borkar profile',
-  ],
-  authors: [{ name: 'Akash Borkar', url: SITE_URL }],
-  creator: 'Akash Borkar',
-  alternates: { canonical: SITE_URL },
-  openGraph: {
-    type: 'website',
-    locale: 'en_US',
-    url: SITE_URL,
-    siteName: 'Akash Borkar',
-    title: 'Akash Borkar | Lead Technical Consultant',
-    description: 'Akash Borkar — Lead Technical Consultant with 9+ years of experience in scalable web architecture, cloud delivery, and engineering leadership.',
-  },
-  twitter: {
-    card: 'summary_large_image',
-    title: 'Akash Borkar | Lead Technical Consultant',
-    description: 'Akash Borkar — Lead Technical Consultant with 9+ years of experience in scalable web architecture, cloud delivery, and engineering leadership.',
-  },
-  robots: {
-    index: true,
-    follow: true,
-    googleBot: {
+export async function generateMetadata(): Promise<Metadata> {
+  let designation = 'Lead Technical Consultant'
+  try {
+    const aboutMe = await fetchAboutMe()
+    designation = aboutMe.designation
+  } catch {
+    // CMS unavailable — fall back to default designation
+  }
+
+  const title = `Akash Borkar | ${designation}`
+  const description = `Akash Borkar — ${designation} with 9+ years of experience in scalable web architecture, cloud delivery, and engineering leadership.`
+
+  return {
+    metadataBase: new URL(SITE_URL),
+    title: {
+      default: title,
+      template: '%s | Akash Borkar',
+    },
+    description,
+    keywords: [
+      'Akash Borkar',
+      designation,
+      'Technical Consultant',
+      'Software Architect',
+      'Cloud Delivery',
+      'Engineering Leadership',
+      'Akash Borkar profile',
+    ],
+    authors: [{ name: 'Akash Borkar', url: SITE_URL }],
+    creator: 'Akash Borkar',
+    alternates: { canonical: SITE_URL },
+    openGraph: {
+      type: 'website',
+      locale: 'en_US',
+      url: SITE_URL,
+      siteName: 'Akash Borkar',
+      title,
+      description,
+    },
+    twitter: {
+      card: 'summary_large_image',
+      title,
+      description,
+    },
+    robots: {
       index: true,
       follow: true,
-      'max-video-preview': -1,
-      'max-image-preview': 'large',
-      'max-snippet': -1,
+      googleBot: {
+        index: true,
+        follow: true,
+        'max-video-preview': -1,
+        'max-image-preview': 'large',
+        'max-snippet': -1,
+      },
     },
-  },
+  }
 }
 
 export default function RootLayout({

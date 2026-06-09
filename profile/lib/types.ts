@@ -78,6 +78,7 @@ export interface CuratedItem {
 // ---------------------------------------------------------------------------
 
 export interface AboutMe extends StrapiEntity {
+  designation: string
   elevatorPitch: string
   professionalNarrative: StrapiBlock[]
   profileImage: StrapiMedia | null

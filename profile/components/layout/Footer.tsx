@@ -21,7 +21,9 @@ export async function Footer() {
           <Link href="/" className="text-base font-bold text-accent hover:opacity-80 transition-opacity">
             Akash Borkar
           </Link>
-          <p className="mt-1 text-sm text-muted-foreground">Lead Technical Consultant</p>
+          {aboutMe?.designation && (
+            <p className="mt-1 text-sm text-muted-foreground">{aboutMe.designation}</p>
+          )}
         </div>
 
         {/* Col 2 — Quick Links */}

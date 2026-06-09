@@ -3,11 +3,21 @@ import Link from 'next/link'
 import { Navbar } from '@/components/layout/Navbar'
 import { Footer } from '@/components/layout/Footer'
 import { Card, CardContent } from '@/components/ui/card'
-import { fetchContact } from '@/lib/api'
+import { fetchAboutMe, fetchContact } from '@/lib/api'
 
-export const metadata: Metadata = {
-  title: 'Contact | Lead Technical Consultant',
-  description: 'Get in touch to discuss projects, collaborations, or consulting opportunities.',
+export async function generateMetadata(): Promise<Metadata> {
+  try {
+    const aboutMe = await fetchAboutMe()
+    return {
+      title: `Contact | ${aboutMe.designation}`,
+      description: 'Get in touch to discuss projects, collaborations, or consulting opportunities.',
+    }
+  } catch {
+    return {
+      title: 'Contact | Akash Borkar',
+      description: 'Get in touch to discuss projects, collaborations, or consulting opportunities.',
+    }
+  }
 }
 
 export default async function ContactPage() {

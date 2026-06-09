@@ -56,7 +56,7 @@ export function HeroSection({ aboutMe }: HeroSectionProps) {
 
             {/* Role subtitle */}
             <p className="text-sm uppercase tracking-widest text-muted-foreground mb-4 font-medium">
-              Lead Technical Consultant
+              {aboutMe.designation}
             </p>
 
             {/* Elevator pitch */}

@@ -41,10 +41,10 @@ export default async function Home() {
     '@context': 'https://schema.org',
     '@type': 'Person',
     name: 'Akash Borkar',
-    jobTitle: 'Lead Technical Consultant',
+    jobTitle: aboutMe?.designation ?? 'Lead Technical Consultant',
     url: siteUrl,
     sameAs: ['https://www.linkedin.com/in/akashdborkar/'],
-    description: 'Lead Technical Consultant with 9+ years of experience in scalable web architecture, cloud delivery, and engineering leadership.',
+    description: `${aboutMe?.designation ?? 'Lead Technical Consultant'} with 9+ years of experience in scalable web architecture, cloud delivery, and engineering leadership.`,
   }
 
   return (
